@@ -1,15 +1,12 @@
 package com.pauljoda.nucleus.util;
 
 import net.minecraft.core.Direction;
-import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
-import net.neoforged.neoforge.items.wrapper.SidedInvWrapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,21 +29,21 @@ public class InventoryUtils {
      * @param inventory The inventory
      * @return Redstone strength
      */
-    public static int calcRedstoneFromInventory(IItemHandler inventory) {
+    public static int calcRedstoneFromInventory(ResourceHandler<ItemResource> inventory) {
         if (inventory == null)
             return 0;
 
         int i = 0;
         float f = 0.0F;
-        for (int j = 0; j < inventory.getSlots(); j++) {
-            ItemStack stack = inventory.getStackInSlot(j);
-            if (!stack.isEmpty()) {
-                f += stack.getCount() / stack.getMaxStackSize();
+        for (int j = 0; j < inventory.size(); j++) {
+            ItemResource resource = inventory.getResource(j);
+            if (!resource.isEmpty()) {
+                f += (float) inventory.getAmountAsLong(j) / resource.toStack().getMaxStackSize();
                 i += 1;
             }
         }
 
-        f = f / inventory.getSlots();
+        f = f / inventory.size();
         return Math.floor(f * 14F) + i > 0 ? 1 : 0;
     }
 
@@ -90,12 +87,11 @@ public class InventoryUtils {
     }
 
     /**
-     * Used to move items from one inventory to another. You can wrap it if you have to
-     * but since you'll be calling from us, there shouldn't be an issue
+     * Used to move items from one inventory to another through NeoForge transfer handlers.
      *
-     * @param source    The source inventory, can be IInventory, ISideInventory, or preferably IItemHandler
+     * @param source    The source inventory block entity
      * @param fromSlot  The from slot, -1 for any
-     * @param target    The target inventory, can be IInventory, ISideInventory, or preferably IItemHandler
+     * @param target    The target inventory block entity
      * @param intoSlot  The slot to move into the target, -1 for any
      * @param maxAmount The max amount to move/extract
      * @param dir       The direction moving into, so the face of the fromInventory
@@ -109,79 +105,11 @@ public class InventoryUtils {
         if (source == null || target == null)
             return false;
 
-        if ((checkSidedSource && source instanceof BlockEntity) || (checkSidedTarget && target instanceof BlockEntity)) {
-            ResourceHandler<ItemResource> fromHandler = getItemResourceHandler(source, dir.getOpposite(), checkSidedSource);
-            ResourceHandler<ItemResource> toHandler = getItemResourceHandler(target, dir, checkSidedTarget);
-            if (fromHandler == null || toHandler == null)
-                return false;
-            return moveItemResource(fromHandler, fromSlot, toHandler, intoSlot, maxAmount, doMove);
-        }
-
-        // Object to hold source
-        IItemHandler fromInventory;
-
-        // If source is not an item handler, attempt to cast
-        if (!(source instanceof IItemHandler)) {
-            if (source instanceof WorldlyContainer) {
-                fromInventory = new SidedInvWrapper((WorldlyContainer) source, dir.getOpposite()); // Wrap sided
-            } else
-                return false; // Not valid
-        } else {
-            // Cast item handlers
-            fromInventory = (IItemHandler) source;
-        }
-
-        IItemHandler targetInventory;
-
-        // If sink is not an item handler, attempt to cast
-        if (!(target instanceof IItemHandler)) {
-            if (target instanceof WorldlyContainer) {
-                targetInventory = new SidedInvWrapper((WorldlyContainer) target, dir); // Wrap sided
-            } else
-                return false; // Not valid
-        } else {
-            // Cast item handlers
-            targetInventory = (IItemHandler) target;
-        }
-
-        // Load slots
-        List<Integer> fromSlots = new ArrayList<>();
-        List<Integer> toSlots = new ArrayList<>();
-
-        // Add From Slots
-        if (fromSlot != -1)
-            fromSlots.add(fromSlot);
-        else
-            for (int x = 0; x < fromInventory.getSlots(); x++)
-                fromSlots.add(x);
-
-        // Add to slots
-        if (intoSlot != -1)
-            toSlots.add(intoSlot);
-        else
-            for (int x = 0; x < targetInventory.getSlots(); x++)
-                toSlots.add(x);
-
-        // Do actual movement
-        for (Integer fromSlot1 : fromSlots) { // Cycle fromInventory
-            if (!fromInventory.getStackInSlot(fromSlot1).isEmpty()) { // If we have something
-                ItemStack fromStack = fromInventory.extractItem(fromSlot1, maxAmount, true); // Simulate to get stack
-                if (!fromStack.isEmpty()) { // Make sure we got something
-                    for (Integer toSlot : toSlots) { // Cycle to inventory
-                        int slotID = toSlot; // Grab slot
-                        ItemStack movedStack =
-                                targetInventory.insertItem(slotID, fromStack.copy(), !doMove); // Try insert
-                        if (!ItemStack.matches(fromStack, movedStack)) { // If a change was made to the stack
-                            fromInventory.extractItem(fromSlot1,
-                                    (!movedStack.isEmpty()) ? fromStack.getCount() - movedStack.getCount() : maxAmount,
-                                    !doMove); // Extract from original
-                            return true; // Exit
-                        }
-                    }
-                }
-            }
-        }
-        return false; // Failed to move something
+        ResourceHandler<ItemResource> fromHandler = getItemResourceHandler(source, dir.getOpposite(), checkSidedSource);
+        ResourceHandler<ItemResource> toHandler = getItemResourceHandler(target, dir, checkSidedTarget);
+        if (fromHandler == null || toHandler == null)
+            return false;
+        return moveItemResource(fromHandler, fromSlot, toHandler, intoSlot, maxAmount, doMove);
     }
 
     private static ResourceHandler<ItemResource> getItemResourceHandler(Object source, Direction side, boolean sided) {

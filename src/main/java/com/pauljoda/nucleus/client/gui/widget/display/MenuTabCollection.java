@@ -163,7 +163,7 @@ public class MenuTabCollection extends BaseWidget {
     @Override
     public void renderToolTip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         tabs.forEach((menuTab -> {
-            if (menuTab.isMouseOver(mouseX - parent.getGuiLeft(), mouseY - parent.getGuiTop()))
+            if (menuTab.isMouseOver(mouseX - parent.screenLeft(), mouseY - parent.screenTop()))
                 menuTab.renderToolTip(graphics, mouseX, mouseY);
         }));
     }
@@ -257,7 +257,7 @@ public class MenuTabCollection extends BaseWidget {
                 if (tab.isMouseOver(mouseX, mouseY)) {
                     if (tab.getMouseEventListener() == null) {
                         if (!tab.mouseDownActivated(
-                                (tab instanceof MenuReverseTab) ? mouseX + tab.expandedWidth - 5 : mouseX - parent.getXSize() + 5,
+                                (tab instanceof MenuReverseTab) ? mouseX + tab.expandedWidth - 5 : mouseX - parent.screenWidth() + 5,
                                 mouseY - (i * 24) - 2, button)) {
                             if (activeTab != null &&
                                     activeTab != tab) {
@@ -296,7 +296,7 @@ public class MenuTabCollection extends BaseWidget {
             for (int i = 0; i < tabs.size(); i++) {
                 MenuTab tab = tabs.get(i);
                 if (tab.isMouseOver(mouseX, mouseY)) {
-                    tab.mouseUpActivated((tab instanceof MenuReverseTab) ? mouseX + tab.expandedWidth - 5 : mouseX - parent.getXSize() + 5,
+                    tab.mouseUpActivated((tab instanceof MenuReverseTab) ? mouseX + tab.expandedWidth - 5 : mouseX - parent.screenWidth() + 5,
                             mouseY - (i * 24) - 2, button);
                     return;
                 }
@@ -316,7 +316,7 @@ public class MenuTabCollection extends BaseWidget {
             for (int i = 0; i < tabs.size(); i++) {
                 MenuTab tab = tabs.get(i);
                 if (tab.isMouseOver(mouseX, mouseY)) {
-                    tab.mouseDragActivated((tab instanceof MenuReverseTab) ? mouseX + tab.expandedWidth - 5 : mouseX - parent.getXSize() + 5,
+                    tab.mouseDragActivated((tab instanceof MenuReverseTab) ? mouseX + tab.expandedWidth - 5 : mouseX - parent.screenWidth() + 5,
                             mouseY - (i * 24) - 2, button, xAmount, yAmount);
                     return;
                 }

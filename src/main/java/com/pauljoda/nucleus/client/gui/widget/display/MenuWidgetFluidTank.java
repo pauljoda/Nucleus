@@ -6,9 +6,7 @@ import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.util.RenderUtils;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 
-import javax.annotation.Nullable;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -27,8 +25,6 @@ public class MenuWidgetFluidTank extends BaseWidget {
     protected int width, height;
     protected Supplier<FluidStack> fluidSupplier;
     protected IntSupplier capacitySupplier;
-    @Nullable
-    protected FluidTank tank;
 
     /**
      * Creates a fluid tank renderer
@@ -48,16 +44,6 @@ public class MenuWidgetFluidTank extends BaseWidget {
         this.height = h;
         this.fluidSupplier = fluidSupplier;
         this.capacitySupplier = capacitySupplier;
-    }
-
-    /**
-     * @deprecated Use the supplier constructor with explicit fluid state and capacity. `FluidTank` is a deprecated
-     * NeoForge compatibility type in 26.1.
-     */
-    @Deprecated(forRemoval = true)
-    public MenuWidgetFluidTank(MenuBase<?> parent, int x, int y, int w, int h, FluidTank fluidTank) {
-        this(parent, x, y, w, h, fluidTank::getFluid, fluidTank::getCapacity);
-        this.tank = fluidTank;
     }
 
     /*******************************************************************************************************************
@@ -117,23 +103,4 @@ public class MenuWidgetFluidTank extends BaseWidget {
         this.height = height;
     }
 
-    /**
-     * @deprecated Use the supplier constructor and keep tank state outside the widget. `FluidTank` is a deprecated
-     * NeoForge compatibility type in 26.1.
-     */
-    @Deprecated(forRemoval = true)
-    public FluidTank getTank() {
-        return tank;
-    }
-
-    /**
-     * @deprecated Use the supplier constructor and keep tank state outside the widget. `FluidTank` is a deprecated
-     * NeoForge compatibility type in 26.1.
-     */
-    @Deprecated(forRemoval = true)
-    public void setTank(FluidTank tank) {
-        this.tank = tank;
-        this.fluidSupplier = tank::getFluid;
-        this.capacitySupplier = tank::getCapacity;
-    }
 }

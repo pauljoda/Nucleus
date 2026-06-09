@@ -184,7 +184,7 @@ public class MenuTab extends BaseWidget {
     public void renderToolTip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         if (areChildrenActive()) {
             children.forEach((component -> {
-                if (component.isMouseOver(mouseX - xPos - parent.getGuiLeft(), mouseY - yPos - parent.getGuiTop()))
+                if (component.isMouseOver(mouseX - xPos - parent.screenLeft(), mouseY - yPos - parent.screenTop()))
                     component.renderToolTip(graphics, mouseX, mouseY);
             }));
         } else

@@ -3,11 +3,7 @@ package com.pauljoda.nucleus.common.items;
 import com.pauljoda.nucleus.capabilities.energy.EnergyBank;
 import com.pauljoda.nucleus.common.components.EnergyStorageComponent;
 import com.pauljoda.nucleus.registration.NucleusDataComponents;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
-import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
@@ -23,7 +19,7 @@ import org.jetbrains.annotations.NotNull;
  * @author Paul Davis - pauljoda
  * @since 3/1/2017
  */
-public abstract class EnergyContainingItem implements IEnergyStorage, EnergyHandler {
+public abstract class EnergyContainingItem implements EnergyHandler {
     // Variables
     private final ItemStack heldStack;
     private final EnergyBank localEnergy;
@@ -50,14 +46,6 @@ public abstract class EnergyContainingItem implements IEnergyStorage, EnergyHand
             return;
         }
 
-        if (heldStack.has(DataComponents.CUSTOM_DATA)) {
-            CompoundTag legacyTag = heldStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-            localEnergy.load(legacyTag);
-            saveLocalEnergy();
-            removeLegacyEnergyData(legacyTag);
-            return;
-        }
-
         saveLocalEnergy();
     }
 
@@ -80,71 +68,19 @@ public abstract class EnergyContainingItem implements IEnergyStorage, EnergyHand
     protected abstract EnergyBank initializeEnergyStorage();
 
     /*******************************************************************************************************************
-     * IEnergyStorage                                                                                                  *
-     *******************************************************************************************************************/
-
-    /**
-     * Adds energy to the storage. Returns quantity of energy that was accepted.
-     *
-     * @param maxReceive Maximum amount of energy to be inserted.
-     * @param simulate   If TRUE, the insertion will only be simulated.
-     * @return Amount of energy that was (or would have been, if simulated) accepted by the storage.
-     */
-    @Override
-    public int receiveEnergy(int maxReceive, boolean simulate) {
-        loadLocalEnergy();
-        int energyReceived = localEnergy.receiveEnergy(maxReceive, simulate);
-        if (!simulate)
-            saveLocalEnergy();
-        return energyReceived;
-    }
-
-    /**
-     * Removes energy from the storage. Returns quantity of energy that was removed.
-     *
-     * @param maxExtract Maximum amount of energy to be extracted.
-     * @param simulate   If TRUE, the extraction will only be simulated.
-     * @return Amount of energy that was (or would have been, if simulated) extracted from the storage.
-     */
-    @Override
-    public int extractEnergy(int maxExtract, boolean simulate) {
-        loadLocalEnergy();
-        int extractedEnergy = localEnergy.extractEnergy(maxExtract, simulate);
-        if (!simulate)
-            saveLocalEnergy();
-        return extractedEnergy;
-    }
-
-    /**
-     * Returns the amount of energy currently stored.
-     */
-    @Override
-    public int getEnergyStored() {
-        loadLocalEnergy();
-        return localEnergy.getEnergyStored();
-    }
-
-    /**
-     * Returns the maximum amount of energy that can be stored.
-     */
-    @Override
-    public int getMaxEnergyStored() {
-        loadLocalEnergy();
-        return localEnergy.getMaxEnergyStored();
-    }
-
-    /*******************************************************************************************************************
      * EnergyHandler                                                                                                   *
      *******************************************************************************************************************/
 
     @Override
     public long getAmountAsLong() {
-        return getEnergyStored();
+        loadLocalEnergy();
+        return localEnergy.getAmountAsLong();
     }
 
     @Override
     public long getCapacityAsLong() {
-        return getMaxEnergyStored();
+        loadLocalEnergy();
+        return localEnergy.getCapacityAsLong();
     }
 
     @Override
@@ -153,10 +89,10 @@ public abstract class EnergyContainingItem implements IEnergyStorage, EnergyHand
             return 0;
 
         loadLocalEnergy();
-        int inserted = localEnergy.receiveEnergy(amount, true);
+        int inserted = Math.min(amount, Math.min(localEnergy.getMaxReceive(), localEnergy.getCapacity() - localEnergy.getEnergy()));
         if (inserted > 0) {
             energyJournal.updateSnapshots(transaction);
-            localEnergy.receiveEnergy(inserted, false);
+            localEnergy.setEnergy(localEnergy.getEnergy() + inserted);
             saveLocalEnergy();
         }
         return inserted;
@@ -168,10 +104,10 @@ public abstract class EnergyContainingItem implements IEnergyStorage, EnergyHand
             return 0;
 
         loadLocalEnergy();
-        int extracted = localEnergy.extractEnergy(amount, true);
+        int extracted = Math.min(amount, Math.min(localEnergy.getMaxExtract(), localEnergy.getEnergy()));
         if (extracted > 0) {
             energyJournal.updateSnapshots(transaction);
-            localEnergy.extractEnergy(extracted, false);
+            localEnergy.setEnergy(localEnergy.getEnergy() - extracted);
             saveLocalEnergy();
         }
         return extracted;
@@ -181,18 +117,16 @@ public abstract class EnergyContainingItem implements IEnergyStorage, EnergyHand
      * Returns if this storage can have energy extracted.
      * If this is false, then any calls to extractEnergy will return 0.
      */
-    @Override
     public boolean canExtract() {
-        return true;
+        return localEnergy.canExtract();
     }
 
     /**
      * Used to determine if this storage can receive energy.
      * If this is false, then any calls to receiveEnergy will return 0.
      */
-    @Override
     public boolean canReceive() {
-        return true;
+        return localEnergy.canReceive();
     }
 
     private class StackEnergyJournal extends SnapshotJournal<EnergyStorageComponent> {
@@ -208,15 +142,4 @@ public abstract class EnergyContainingItem implements IEnergyStorage, EnergyHand
         }
     }
 
-    private void removeLegacyEnergyData(CompoundTag legacyTag) {
-        legacyTag.remove("EnergyStored");
-        legacyTag.remove("Capacity");
-        legacyTag.remove("MaxInsert");
-        legacyTag.remove("MaxExtract");
-        if (legacyTag.isEmpty()) {
-            heldStack.remove(DataComponents.CUSTOM_DATA);
-        } else {
-            CustomData.set(DataComponents.CUSTOM_DATA, heldStack, legacyTag);
-        }
-    }
 }

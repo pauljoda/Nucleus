@@ -1,6 +1,8 @@
 package com.pauljoda.nucleus.common.container;
 
+import com.pauljoda.nucleus.capabilities.item.NucleusItemResourceHandler;
 import com.pauljoda.nucleus.common.container.slots.IPhantomSlot;
+import com.pauljoda.nucleus.common.container.slots.ResourceSlot;
 import com.pauljoda.nucleus.util.InventoryUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Inventory;
@@ -9,8 +11,6 @@ import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.SlotItemHandler;
 
 import javax.annotation.Nullable;
 
@@ -27,7 +27,7 @@ import javax.annotation.Nullable;
 public abstract class BaseContainer extends AbstractContainerMenu {
     // Variables
     protected Inventory playerInventory;
-    protected IItemHandler inventory;
+    protected NucleusItemResourceHandler inventory;
     protected int inventorySize;
     protected ContainerLevelAccess access;
     protected Block blockType;
@@ -45,7 +45,7 @@ public abstract class BaseContainer extends AbstractContainerMenu {
      * @param block           The block type associated with the container
      */
     public BaseContainer(@Nullable MenuType<?> type, int id,
-                         Inventory playerInventory, IItemHandler inventory,
+                         Inventory playerInventory, NucleusItemResourceHandler inventory,
                          @Nullable Level level, @Nullable BlockPos pos, @Nullable Block block) {
         super(type, id);
 
@@ -57,7 +57,7 @@ public abstract class BaseContainer extends AbstractContainerMenu {
         this.playerInventory = playerInventory;
         this.inventory = inventory;
 
-        inventorySize = inventory.getSlots();
+        inventorySize = inventory.size();
     }
 
     /**
@@ -121,7 +121,7 @@ public abstract class BaseContainer extends AbstractContainerMenu {
     protected void addInventoryLine(int xOffset, int yOffset, int start, int count, int margin) {
         int slotID = start;
         for (int x = 0; x < count; x++) {
-            addSlot(new SlotItemHandler(inventory, slotID, xOffset + x * (18 + margin), yOffset));
+            addSlot(new ResourceSlot(inventory, slotID, xOffset + x * (18 + margin), yOffset));
             slotID++;
         }
     }
@@ -139,7 +139,7 @@ public abstract class BaseContainer extends AbstractContainerMenu {
         int slotID = start;
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                addSlot(new SlotItemHandler(inventory, slotID, xOffset + x * 18, yOffset + y * 18));
+                addSlot(new ResourceSlot(inventory, slotID, xOffset + x * 18, yOffset + y * 18));
                 slotID++;
             }
         }

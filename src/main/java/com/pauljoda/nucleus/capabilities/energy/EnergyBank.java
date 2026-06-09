@@ -3,15 +3,14 @@ package com.pauljoda.nucleus.capabilities.energy;
 import com.pauljoda.nucleus.common.Savable;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.energy.EnergyStorage;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
 /**
  * This class represents a storage bank for energy.
  */
-public class EnergyBank implements IEnergyStorage, net.neoforged.neoforge.transfer.energy.EnergyHandler, Savable {
+public class EnergyBank implements EnergyHandler, Savable {
     private static final String ENERGY_STORED = "EnergyStored";
     private static final String CAPACITY = "Capacity";
     private static final String MAX_EXTRACT = "MaxExtract";
@@ -143,68 +142,10 @@ public class EnergyBank implements IEnergyStorage, net.neoforged.neoforge.transf
     }
 
     /**
-     * Adds energy to the storage. Returns the quantity of energy that was accepted.
-     *
-     * @param maxReceive the maximum amount of energy to be inserted
-     * @param simulate   if true, the insertion will only be simulated
-     * @return the amount of energy that was (or would have been, if simulated) accepted by the storage
-     */
-
-    @Override
-    public int receiveEnergy(int maxReceive, boolean simulate) {
-        if (!canReceive())
-            return 0;
-
-        int energyReceived = Math.min(capacity - energy, Math.min(this.maxReceive, maxReceive));
-        if (!simulate)
-            energy += energyReceived;
-        return energyReceived;
-    }
-
-    /**
-     * Removes energy from the storage.
-     *
-     * @param maxExtract Maximum amount of energy to be extracted.
-     * @param simulate   If TRUE, the extraction will only be simulated.
-     * @return Amount of energy that was (or would have been, if simulated) extracted from the storage.
-     */
-    @Override
-    public int extractEnergy(int maxExtract, boolean simulate) {
-        if (!canExtract())
-            return 0;
-
-        int energyExtracted = Math.min(energy, Math.min(this.maxExtract, maxExtract));
-        if (!simulate)
-            energy -= energyExtracted;
-        return energyExtracted;
-    }
-
-    /**
-     * Retrieves the amount of energy currently stored in the EnergyBank object.
-     *
-     * @return The current amount of energy stored.
-     */
-    @Override
-    public int getEnergyStored() {
-        return energy;
-    }
-
-    /**
-     * Returns the maximum amount of energy that can be stored.
-     *
-     * @return the maximum amount of energy that can be stored
-     */
-    @Override
-    public int getMaxEnergyStored() {
-        return capacity;
-    }
-
-    /**
      * Determines if the energy bank is capable of extracting energy.
      *
      * @return true if the energy bank can extract energy, false otherwise.
      */
-    @Override
     public boolean canExtract() {
         return this.maxExtract > 0;
     }
@@ -214,7 +155,6 @@ public class EnergyBank implements IEnergyStorage, net.neoforged.neoforge.transf
      *
      * @return true if the energy bank can receive energy, false otherwise
      */
-    @Override
     public boolean canReceive() {
         return this.maxReceive > 0;
     }
@@ -225,12 +165,12 @@ public class EnergyBank implements IEnergyStorage, net.neoforged.neoforge.transf
 
     @Override
     public long getAmountAsLong() {
-        return getEnergyStored();
+        return energy;
     }
 
     @Override
     public long getCapacityAsLong() {
-        return getMaxEnergyStored();
+        return capacity;
     }
 
     @Override
@@ -238,10 +178,10 @@ public class EnergyBank implements IEnergyStorage, net.neoforged.neoforge.transf
         if (amount <= 0 || !canReceive())
             return 0;
 
-        int inserted = receiveEnergy(amount, true);
+        int inserted = Math.min(capacity - energy, Math.min(this.maxReceive, amount));
         if (inserted > 0) {
             energyJournal.updateSnapshots(transaction);
-            receiveEnergy(inserted, false);
+            energy += inserted;
         }
         return inserted;
     }
@@ -251,10 +191,10 @@ public class EnergyBank implements IEnergyStorage, net.neoforged.neoforge.transf
         if (amount <= 0 || !canExtract())
             return 0;
 
-        int extracted = extractEnergy(amount, true);
+        int extracted = Math.min(energy, Math.min(this.maxExtract, amount));
         if (extracted > 0) {
             energyJournal.updateSnapshots(transaction);
-            extractEnergy(extracted, false);
+            energy -= extracted;
         }
         return extracted;
     }

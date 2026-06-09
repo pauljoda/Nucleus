@@ -1,7 +1,7 @@
 package com.pauljoda.nucleus.common.blocks.entity.item;
 
 import com.pauljoda.nucleus.capabilities.item.InventoryContents;
-import com.pauljoda.nucleus.capabilities.item.InventoryHolderCapability;
+import com.pauljoda.nucleus.capabilities.item.NucleusItemResourceHandler;
 import com.pauljoda.nucleus.common.blocks.entity.Syncable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -10,7 +10,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 /**
  * This file was created for Nucleus - Java
@@ -25,11 +24,13 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 public abstract class InventoryHandler extends Syncable {
 
     private final InventoryContents inventory;
+    private final NucleusItemResourceHandler itemResourceHandler;
 
     public InventoryHandler(BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
         super(tileEntityTypeIn, pos, state);
 
         inventory = initializeInventory();
+        itemResourceHandler = new NucleusItemResourceHandler(inventory, this::isItemValidForSlot, slot -> markForUpdate(3));
     }
 
     /*******************************************************************************************************************
@@ -68,18 +69,8 @@ public abstract class InventoryHandler extends Syncable {
      *
      * @return The item capability of the inventory.
      */
-    public IItemHandlerModifiable getItemCapability() {
-        return new InventoryHolderCapability(inventory) {
-            @Override
-            protected int getInventorySize() {
-                return InventoryHandler.this.getInventorySize();
-            }
-
-            @Override
-            protected boolean isItemValidForSlot(int index, ItemStack stack) {
-                return InventoryHandler.this.isItemValidForSlot(index, stack);
-            }
-        };
+    public NucleusItemResourceHandler getItemResourceHandler() {
+        return itemResourceHandler;
     }
 
     /**
@@ -88,8 +79,8 @@ public abstract class InventoryHandler extends Syncable {
      * @param direction The direction in which to retrieve the item capability.
      * @return The item capability of the inventory in the specified direction.
      */
-    public IItemHandlerModifiable getItemCapabilitySided(Direction direction) {
-        return getItemCapability();
+    public NucleusItemResourceHandler getItemResourceHandlerSided(Direction direction) {
+        return getItemResourceHandler();
     }
 
     /**

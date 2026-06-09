@@ -48,15 +48,6 @@ public class RenderUtils {
     }
 
     /**
-     * Used to bind the MC item sheet
-     * No longer used as items are now part of Block Sheet
-     */
-    @Deprecated
-    public static void bindMinecraftItemSheet() {
-        bindTexture(MC_BLOCKS_RESOURCE_LOCATION);
-    }
-
-    /**
      * Used to bind the MC blocks sheet
      */
     public static void bindMinecraftBlockSheet() {

@@ -12,7 +12,8 @@ import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.BlockCapability;
-import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -265,11 +266,12 @@ public class LevelUtils {
      * @param world       The world
      * @param pos         The block pos
      */
-    public static void dropStacksInInventory(IItemHandler itemHandler, Level world, BlockPos pos) {
-        for (int slot = 0; slot < itemHandler.getSlots(); slot++) {
-            ItemStack stack = itemHandler.getStackInSlot(slot);
-            if (!stack.isEmpty())
-                dropStack(world, stack, pos);
+    public static void dropStacksInInventory(ResourceHandler<ItemResource> itemHandler, Level world, BlockPos pos) {
+        for (int slot = 0; slot < itemHandler.size(); slot++) {
+            ItemResource resource = itemHandler.getResource(slot);
+            int amount = itemHandler.getAmountAsInt(slot);
+            if (!resource.isEmpty() && amount > 0)
+                dropStack(world, resource.toStack(amount), pos);
         }
     }
 

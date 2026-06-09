@@ -7,7 +7,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.transfer.access.ItemAccess;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.energy.EnergyHandlerUtil;
@@ -58,28 +57,6 @@ public class EnergyUtils {
         return format.format(energy / Math.pow(1000, exp)) + " " + unitType + "E";
     }
 
-    /**
-     * Transfers power from one storage to another, either can be null if you are not sure if it is capable
-     *
-     * @param source      The source energy storage
-     * @param destination The destination energy storage
-     * @param maxAmount   Max amount to transfer
-     * @param simulate    True to only simulate, not actually transfer
-     * @return The amount moved or would be moved
-     */
-    public static int transferPower(@Nullable IEnergyStorage source, @Nullable IEnergyStorage destination,
-                                    int maxAmount, boolean simulate) {
-        if (source == null || destination == null)
-            return 0;
-
-        int amount = source
-                .extractEnergy(destination.receiveEnergy(maxAmount, true), true);
-        // Try move power
-        return destination
-                .receiveEnergy(source
-                .extractEnergy(amount, simulate), simulate);
-    }
-
     public static int transferPower(@Nullable EnergyHandler source, @Nullable EnergyHandler destination,
                                     int maxAmount, boolean simulate) {
         if (source == null || destination == null)
@@ -103,22 +80,18 @@ public class EnergyUtils {
      * @param simulated     True to just simulate
      * @return How much energy consumed
      */
-    public static int distributePowerToFaces(IEnergyStorage source, Level level, BlockPos pos,
+    public static int distributePowerToFaces(EnergyHandler source, Level level, BlockPos pos,
                                              int amountPerFace, boolean simulated) {
         int consumedPower = 0;
 
         for (Direction dir : Direction.values()) {
             EnergyHandler target = level.getCapability(Capabilities.Energy.BLOCK, pos.relative(dir), dir.getOpposite());
             if (target != null) {
-                int available = source.extractEnergy(amountPerFace, true);
                 try (Transaction transaction = Transaction.openRoot()) {
-                    int inserted = target.insert(available, transaction);
-                    int extracted = source.extractEnergy(inserted, true);
-                    if (!simulated) {
-                        source.extractEnergy(extracted, false);
+                    int moved = EnergyHandlerUtil.move(source, target, amountPerFace, transaction);
+                    if (!simulated)
                         transaction.commit();
-                    }
-                    consumedPower += extracted;
+                    consumedPower += moved;
                 }
             }
         }
@@ -129,29 +102,25 @@ public class EnergyUtils {
     /**
      * Sends power to all faces connected
      *
-     * @param source        The energy source
+     * @param destination   The energy destination
      * @param level         The world
      * @param pos           The position
      * @param amountPerFace How much per face
      * @param simulated     True to just simulate
      * @return How much energy consumed
      */
-    public static int consumePowerFromFaces(IEnergyStorage source, Level level, BlockPos pos,
+    public static int consumePowerFromFaces(EnergyHandler destination, Level level, BlockPos pos,
                                             int amountPerFace, boolean simulated) {
         int receivedPower = 0;
 
         for (Direction dir : Direction.values()) {
             EnergyHandler sourceHandler = level.getCapability(Capabilities.Energy.BLOCK, pos.relative(dir), dir.getOpposite());
             if (sourceHandler != null) {
-                int receivable = source.receiveEnergy(amountPerFace, true);
                 try (Transaction transaction = Transaction.openRoot()) {
-                    int extracted = sourceHandler.extract(receivable, transaction);
-                    int inserted = source.receiveEnergy(extracted, true);
-                    if (!simulated) {
-                        source.receiveEnergy(inserted, false);
+                    int moved = EnergyHandlerUtil.move(sourceHandler, destination, amountPerFace, transaction);
+                    if (!simulated)
                         transaction.commit();
-                    }
-                    receivedPower += inserted;
+                    receivedPower += moved;
                 }
             }
         }
@@ -171,34 +140,6 @@ public class EnergyUtils {
             addToolTipInfo(energyHandler, toolTip,
                     energyHandler.getCapacityAsInt() - energyHandler.getAmountAsInt(),
                     energyHandler.getAmountAsInt());
-        }
-    }
-
-    /**
-     * Adds the energy storage info
-     *
-     * @param energyStorage The energy storage object
-     * @param toolTip       The list to add to
-     * @param insert        The max insert, -1 to skip
-     * @param extract       The max extract, -1 to skip
-     */
-    public static void addToolTipInfo(IEnergyStorage energyStorage, List<Component> toolTip, int insert, int extract) {
-        toolTip.add(Component.translatable(ChatFormatting.GOLD + ClientUtils.translate("nucleus.energy.energyStored")));
-        toolTip.add(Component.translatable("  " + EnergyUtils.getEnergyDisplay(energyStorage.getEnergyStored()) + " / " +
-                EnergyUtils.getEnergyDisplay(energyStorage.getMaxEnergyStored())));
-        if (!ClientUtils.isShiftPressed()) {
-            toolTip.add(Component.translatable(""));
-            toolTip.add(Component.translatable(ChatFormatting.GRAY + "" + ChatFormatting.ITALIC + ClientUtils.translate("nucleus.text.shift_info")));
-        } else {
-            if (insert > -1) {
-                toolTip.add(Component.translatable(""));
-                toolTip.add(Component.translatable(ChatFormatting.GREEN + ClientUtils.translate("nucleus.energy.energyIn")));
-                toolTip.add(Component.translatable("  " + EnergyUtils.getEnergyDisplay(insert)));
-            }
-            if (extract > -1) {
-                toolTip.add(Component.translatable(ChatFormatting.DARK_RED + ClientUtils.translate("nucleus.energy.energyOut")));
-                toolTip.add(Component.translatable("  " + EnergyUtils.getEnergyDisplay(extract)));
-            }
         }
     }
 

@@ -1,8 +1,7 @@
 package com.pauljoda.nucleus.common.container.slots;
 
+import com.pauljoda.nucleus.capabilities.item.NucleusItemResourceHandler;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.SlotItemHandler;
 
 /**
  * This file was created for Nucleus
@@ -14,7 +13,7 @@ import net.neoforged.neoforge.items.SlotItemHandler;
  * @author Paul Davis - pauljoda
  * @since 2/13/2017
  */
-public class PhantomSlot extends SlotItemHandler implements IPhantomSlot {
+public class PhantomSlot extends ResourceSlot implements IPhantomSlot {
 
     /**
      * Creates a phantom slot
@@ -24,7 +23,7 @@ public class PhantomSlot extends SlotItemHandler implements IPhantomSlot {
      * @param xPosition   The slot x pos
      * @param yPosition   The slot y pos
      */
-    public PhantomSlot(IItemHandler itemHandler, int index, int xPosition, int yPosition) {
+    public PhantomSlot(NucleusItemResourceHandler itemHandler, int index, int xPosition, int yPosition) {
         super(itemHandler, index, xPosition, yPosition);
     }
 

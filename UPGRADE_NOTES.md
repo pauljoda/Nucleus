@@ -2,7 +2,77 @@
 
 ## Current status
 
-STATUS: Partial feature migration. The project is configured for Minecraft `26.1.2`, NeoForge `26.1.2.75`, ModDevGradle `2.0.141`, Gradle `9.1.0`, and Java `25`. `compileJava` and `build` pass after replacing several compile-preserving stubs/no-ops, but the port still needs runtime validation on dependent mods.
+READY_FOR_REVIEW: Clean-break NeoForge 26.1 migration pass is ready for Paul review. The project is configured for Minecraft `26.1.2`, NeoForge `26.1.2.75`, ModDevGradle `2.0.141`, Gradle `9.1.0`, and Java `25`.
+
+## Clean-break migration pass on 2026-06-09 UTC
+
+STATUS: Removed deprecated `Savable` `CompoundTag` bridge methods. `Savable` is now ValueInput/ValueOutput only.
+
+STATUS: Removed one-time `DataComponents.CUSTOM_DATA` migration reads from `EnergyContainingItem` and `InventoryHandlerItem`. Fresh 26.1 items use only the typed Nucleus item data components.
+
+STATUS: Removed old `IEnergyStorage` public surfaces from Nucleus item/block energy core:
+- `EnergyBank` no longer implements `IEnergyStorage`, and old `receiveEnergy` / `extractEnergy` / `getEnergyStored` / `getMaxEnergyStored` methods were removed.
+- `EnergyContainingItem` no longer implements `IEnergyStorage` and exposes NeoForge transfer `EnergyHandler` only.
+- Block-entity energy bases removed deprecated `getEnergyCapability()` and retain `getEnergyResourceHandler()`.
+- `EnergyUtils` removed old `IEnergyStorage` overloads and now transfers through `EnergyHandler`.
+
+STATUS: Removed old item-handler public surfaces:
+- Deleted `InventoryHolderCapability` and `IInventoryCallback`.
+- Added `NucleusItemResourceHandler`, a `ResourceHandler<ItemResource>` implementation with transaction rollback.
+- `InventoryHandler` now exposes `getItemResourceHandler()` / `getItemResourceHandlerSided()` instead of `getItemCapability()` / `getItemCapabilitySided()`.
+- `BaseContainer` and `PhantomSlot` now use `ResourceSlot`, a resource-handler-backed screen slot, instead of `IItemHandler` / `SlotItemHandler`.
+- `InventoryUtils` and `LevelUtils` helper methods now use `ResourceHandler<ItemResource>` instead of `IItemHandler`.
+
+STATUS: Removed old fluid-handler public surfaces from `FluidHandler` and `FluidAndItemHandler`: they no longer implement `IFluidHandler`, and old `fill`, `drain`, `getTanks`, `getFluidInTank`, `getTankCapacity`, `isFluidValid`, and `getFluidHandler()` surfaces were removed. Block entities expose `getFluidResourceHandler()` as the fluid API.
+
+STATUS: Removed deprecated GUI helper overloads/accessors:
+- Removed `GuiHelper#renderFluid(GuiGraphicsExtractor, FluidTank, ...)`.
+- Removed `MenuWidgetFluidTank` `FluidTank` constructor/getter/setter; it is supplier-backed only.
+- Removed `RenderUtils#bindMinecraftItemSheet`.
+- Replaced `MenuBase#getGuiLeft`, `getGuiTop`, `getXSize`, and `getYSize` with non-deprecated local accessors.
+
+STATUS: Networking remains on `CustomPacketPayload.Type` + `StreamCodec`. No old manual `FriendlyByteBuf` encode/decode packet methods are present.
+
+STATUS: Connected textures are implemented rather than stubbed: `ConnectedTextureBlock` and `UpdatingConnectedTextureBlock` maintain all six `connected_*` state properties from neighboring matching blocks, and `BaseBlockStateGenerator` emits connected-texture blockstate/model JSON as a 26.1 `DataProvider`.
+
+BREAKING_CHANGE: This pass intentionally removes legacy source/binary compatibility for old Nucleus APIs. Downstream mods must move to ValueInput/ValueOutput, typed data components, and NeoForge transfer handlers.
+
+BREAKING_CHANGE: Previous item stacks, block entities, worlds, and old NBT/CUSTOM_DATA layouts are not migrated. This is a fresh-launch-only 26.1 state.
+
+BREAKING_CHANGE: Consumers must register/use `Capabilities.Energy.*`, `Capabilities.Item.*`, and `Capabilities.Fluid.*` with `EnergyHandler` / `ResourceHandler<ItemResource>` / `ResourceHandler<FluidResource>`. Old `IEnergyStorage`, `IItemHandler`, and `IFluidHandler` Nucleus surfaces have been removed except where NeoForge/vanilla internals still force them.
+
+STATUS: Unavoidable old-paradigm internal: fluid block-entity storage still uses NeoForge `FluidTank` internally, and `NucleusFluidResourceHandler` must reference `IFluidHandler.FluidAction` because `FluidTank#fill` / `drain` require that enum. This is not exposed as the Nucleus fluid API.
+
+READY_FOR_REVIEW: Verification passed for this clean-break pass.
+
+Verification on 2026-06-09 UTC:
+
+```bash
+JAVA_HOME=/home/hermes/.local/jdks/jdk25 PATH="/bin:/home/hermes/.local/bin:/home/hermes/.local/bin:/home/hermes/.hermes/hermes-agent/venv/bin:/home/hermes/.hermes/hermes-agent/node_modules/.bin:/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin" ./gradlew compileJava --stacktrace
+```
+
+- STATUS: `compileJava` passed: `BUILD SUCCESSFUL in 8s`, `2 actionable tasks: 1 executed, 1 up-to-date`.
+- STATUS: javac emitted no source deprecation/removal warnings in the final compile output.
+- STATUS: Gradle still emitted the Java 25 native-access warning from `native-platform-0.22-milestone-28.jar` and the Gradle 10 deprecation warning.
+
+```bash
+JAVA_HOME=/home/hermes/.local/jdks/jdk25 PATH="/bin:/home/hermes/.local/bin:/home/hermes/.local/bin:/home/hermes/.hermes/hermes-agent/venv/bin:/home/hermes/.hermes/hermes-agent/node_modules/.bin:/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin" ./gradlew build --stacktrace
+```
+
+- STATUS: First `build` attempts failed only in `:javadoc` because `EnergyUtils` Javadoc parameter names still referenced old energy helper signatures after removing `IEnergyStorage` overloads.
+- STATUS: Fixed the mismatched Javadoc names.
+- STATUS: Final `build` passed: `BUILD SUCCESSFUL in 13s`, `8 actionable tasks: 5 executed, 3 up-to-date`.
+- STATUS: Javadoc still emits existing documentation warnings, but no longer fails.
+
+```bash
+JAVA_HOME=/home/hermes/.local/jdks/jdk25 PATH="/bin:/home/hermes/.local/bin:/home/hermes/.local/bin:/home/hermes/.hermes/hermes-agent/venv/bin:/home/hermes/.hermes/hermes-agent/node_modules/.bin:/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin" xvfb-run -a timeout 120 ./gradlew runClient --stacktrace
+```
+
+- STATUS: Headless client smoke reached NeoForge/FML mod discovery and render-thread startup under Xvfb/llvmpipe.
+- STATUS: Mod list included `jei`, `minecraft`, `neoforge`, and `nucleus_pauljoda`.
+- STATUS: Logs reached `Setting user: Dev`, `Backend library: LWJGL version 3.4.1+2`, resource reload for `vanilla`, `mod_resources`, `mod/nucleus_pauljoda`, `mod/neoforge`, and `mod/jei`, and texture atlas creation including blocks/items/gui/JEI GUI atlases.
+- STATUS: `runClient` exited code `124` from the intentional `timeout 120`, treated as smoke success per coordinator criteria.
+- STATUS: ALSA/OpenAL audio errors are container noise; Minecraft disabled sound and continued.
 
 ## Latest migration pass on 2026-06-09 UTC
 
@@ -31,7 +101,7 @@ STATUS: Restored part of `BaseLootTableGenerator#createStandardTable` block-enti
 
 STATUS: Updated wrench block-entity item transfer in `LevelUtils` to store `saveCustomOnly` data in `DataComponents.BLOCK_ENTITY_DATA`, avoiding full metadata/id/position data in item components while preserving custom block entity state for `TypedEntityData#loadInto`.
 
-STATUS: Fixed `EnergyContainingItem` behavior and exposed a first-class NeoForge 26.1 `transfer.energy.EnergyHandler` implementation with transactional rollback. The legacy `IEnergyStorage` wrapper now passes the simulation flag correctly instead of inverting it.
+STATUS: Fixed `EnergyContainingItem` behavior and exposed a first-class NeoForge 26.1 `transfer.energy.EnergyHandler` implementation with transactional rollback. Superseded by the clean-break pass: the legacy `IEnergyStorage` wrapper was removed.
 
 STATUS: Fixed `InventoryHandlerItem` persistence so slot changes write back to the stack's component data, and exposed it as a first-class `ResourceHandler<ItemResource>` with transaction rollback around the existing slot rules.
 
@@ -41,16 +111,16 @@ STATUS: Registered typed Nucleus item data components:
 - `nucleus_pauljoda:item_energy` stores item energy as an immutable `EnergyStorageComponent` with persistent and network codecs.
 - `nucleus_pauljoda:item_inventory` stores item inventories as an immutable `ItemInventoryComponent` with persistent and network codecs.
 
-STATUS: Migrated `EnergyContainingItem` and `InventoryHandlerItem` away from primary `DataComponents.CUSTOM_DATA` storage. They now read/write the typed Nucleus components, use typed component snapshots for transfer rollback, and only read legacy `CUSTOM_DATA` once to migrate old stacks.
+STATUS: Migrated `EnergyContainingItem` and `InventoryHandlerItem` away from primary `DataComponents.CUSTOM_DATA` storage. Superseded by the clean-break pass: one-time legacy `CUSTOM_DATA` reads were removed.
 
-STATUS: Exposed block-entity fluid tanks through first-class NeoForge 26.1 `ResourceHandler<FluidResource>` handlers via `FluidHandler#getFluidResourceHandler` and `FluidAndItemHandler#getFluidResourceHandler`. The deprecated `IFluidHandler` methods now delegate through transactional fluid-resource operations.
+STATUS: Exposed block-entity fluid tanks through first-class NeoForge 26.1 `ResourceHandler<FluidResource>` handlers via `FluidHandler#getFluidResourceHandler` and `FluidAndItemHandler#getFluidResourceHandler`. Superseded by the clean-break pass: deprecated `IFluidHandler` public methods were removed.
 
 STATUS: Fixed fluid tank transfer behavior while adding the 26.1 transfer handler:
 - `FluidHandler` and `FluidAndItemHandler` no longer call the underlying `FluidTank` twice during `fill` or `drain(int, ...)`.
 - Filled input tanks can now accept additional matching fluid instead of only empty tanks.
 - `drain(FluidStack, ...)` now drains the requested fluid resource instead of falling back to the first output tank with any fluid.
 
-STATUS: `EnergyBank` now implements the NeoForge 26.1 `transfer.energy.EnergyHandler` interface with transactional rollback. Shared energy block-entity bases now expose `getEnergyResourceHandler()` while keeping deprecated `getEnergyCapability()` as a downstream transition surface.
+STATUS: `EnergyBank` now implements the NeoForge 26.1 `transfer.energy.EnergyHandler` interface with transactional rollback. Superseded by the clean-break pass: deprecated `getEnergyCapability()` was removed.
 
 STATUS: Removed unused old `FriendlyByteBuf` encode/decode methods from `SyncableFieldPacket`; packet serialization now uses only the registered `StreamCodec`.
 
@@ -70,11 +140,11 @@ BREAKING_CHANGE: `Savable` implementers must now implement `load(ValueInput)` an
 
 BREAKING_CHANGE: `BaseBlockStateGenerator` no longer extends the removed NeoForge `BlockStateProvider` generator API. Downstream data generators should register it as a `DataProvider` and call `addConnectedTextureModels` before provider execution.
 
-BREAKING_CHANGE: Sided inventory and neighbor energy movement now use NeoForge 26.1 transfer capabilities. Downstream code exposing only old `IItemHandler` / `IEnergyStorage` capabilities should add modern `ResourceHandler<ItemResource>` / `EnergyHandler` registrations.
+BREAKING_CHANGE: Sided inventory and neighbor energy movement now use NeoForge 26.1 transfer capabilities. Downstream code must add modern `ResourceHandler<ItemResource>` / `EnergyHandler` registrations.
 
-BREAKING_CHANGE: `EnergyContainingItem` and `InventoryHandlerItem` now expose NeoForge transfer interfaces as their primary runtime API. Existing `IEnergyStorage` / `IItemHandlerModifiable` methods remain as deprecated compatibility surfaces for downstream migration.
+BREAKING_CHANGE: `EnergyContainingItem` and `InventoryHandlerItem` now expose NeoForge transfer interfaces as their runtime API. Deprecated `IEnergyStorage` / `IItemHandlerModifiable` surfaces were removed.
 
-BREAKING_CHANGE: Block-entity energy and fluid integrations should register `Capabilities.Energy.BLOCK` with `getEnergyResourceHandler()` and `Capabilities.Fluid.BLOCK` with `getFluidResourceHandler()`. Legacy `IEnergyStorage` / `IFluidHandler` getters are deprecated compatibility surfaces, not the primary 26.1 API.
+BREAKING_CHANGE: Block-entity energy and fluid integrations should register `Capabilities.Energy.BLOCK` with `getEnergyResourceHandler()` and `Capabilities.Fluid.BLOCK` with `getFluidResourceHandler()`. Legacy `IEnergyStorage` / `IFluidHandler` getters were removed.
 
 BREAKING_CHANGE: Item energy/inventory persistence no longer writes Nucleus state into `DataComponents.CUSTOM_DATA`. Downstream code that inspected those tags directly must read `nucleus_pauljoda:item_energy` / `nucleus_pauljoda:item_inventory` data components or use the transfer handlers.
 
@@ -129,7 +199,7 @@ BREAKING_CHANGE: `GuiHelper#drawIconWithCut` now requires a `GuiGraphicsExtracto
   - Text, item, and tooltip rendering methods were renamed/reworked.
   - `RenderSystem` state calls and `GlStateManager` usage need removal or replacement.
 - STATUS: `GuiHelper#renderFluid` now has a `GuiGraphicsExtractor` implementation. Runtime GUI validation is still needed, especially for custom fluids whose still texture does not follow the conventional `block/<fluid>_still` sprite path.
-- STATUS: Item/energy helper methods now use 26.1 `ResourceHandler<ItemResource>` and `transfer.energy.EnergyHandler` for block/item capability lookups. Deprecated direct `IItemHandler` / `IEnergyStorage` signatures still exist where callers pass those objects explicitly.
+- STATUS: Item/energy helper methods now use 26.1 `ResourceHandler<ItemResource>` and `transfer.energy.EnergyHandler` for block/item capability lookups. Superseded by the clean-break pass: deprecated direct `IItemHandler` / `IEnergyStorage` helper signatures were removed.
 - STATUS: Core Nucleus block entity persistence has moved to `ValueInput` / `ValueOutput`; old `CompoundTag` bridges remain deprecated for downstream transition.
 - STATUS: Loot/data helper `BaseLootTableGenerator` copies block entity custom names, locks, container loot seed data, dynamic container contents, and caller-specified block-entity save-data paths through 26.1 data-component and Nucleus loot functions.
 
@@ -347,9 +417,9 @@ STATUS: Resolved review item: `BaseLootTableGenerator` now copies block entity c
 STATUS: Resolved review item: arbitrary caller-specified `tags` in `BaseLootTableGenerator#createStandardTable` are copied from block entity save data by `nucleus_pauljoda:copy_block_entity_data`, a registered Nucleus loot function/provider. The function uses 26.1 `MAP_CODEC` registration and writes matched paths into the dropped stack's typed `BLOCK_ENTITY_DATA` component, preserving the old `BlockEntityTag.<tag>` placement behavior through the modern data component.
 STATUS: Resolved review item: `Savable` and the shared block-entity persistence paths now use `ValueInput` / `ValueOutput` as the primary API. Deprecated `CompoundTag` bridges remain only for downstream migration.
 
-STATUS: Resolved review item: `EnergyContainingItem` and `InventoryHandlerItem` now use registered typed Nucleus data components for item energy/inventory, with one-time legacy `CUSTOM_DATA` reads for old stack migration only.
+STATUS: Resolved review item: `EnergyContainingItem` and `InventoryHandlerItem` now use registered typed Nucleus data components for item energy/inventory. Superseded by the clean-break pass: one-time legacy `CUSTOM_DATA` reads were removed.
 
-STATUS: Resolved review item: `FluidHandler` and `FluidAndItemHandler` now expose `ResourceHandler<FluidResource>` as their first-class 26.1 fluid transfer API. Deprecated `IFluidHandler` and `FluidTank` surfaces still exist for source transition and because the current storage internals are still backed by NeoForge's deprecated `FluidTank`.
+STATUS: Resolved review item: `FluidHandler` and `FluidAndItemHandler` now expose `ResourceHandler<FluidResource>` as their first-class 26.1 fluid transfer API. Superseded by the clean-break pass: deprecated `IFluidHandler` public surfaces were removed; `FluidTank` remains an internal storage detail.
 
 STATUS: Resolved review item: shared block-entity energy bases now expose `getEnergyResourceHandler()` and `EnergyBank` implements transactional `transfer.energy.EnergyHandler`.
 
@@ -363,10 +433,10 @@ STATUS: Current decision from Paul guidance: `LevelUtils` wrench transfer remain
 
 - `src/main/java/com/pauljoda/nucleus/client/gui/MenuBase.java`, `src/main/java/com/pauljoda/nucleus/client/gui/widget/**`, and `src/main/java/com/pauljoda/nucleus/helper/GuiHelper.java`: GUI migration is mostly mechanical to `GuiGraphicsExtractor`, 2D matrices, event objects, and new tooltip/text/item extraction calls.
   - Why it matters: headless smoke only proves startup; custom screens, tabs, text boxes, tooltips, drag/click handling, z/order, nine-patch scaling, and fluid display still need interactive validation even though the render-state no-ops and raw tessellator path have been replaced.
-  - QUESTION_FOR_PAUL: Which dependent mod GUI should be used as the acceptance test before treating the GUI framework as migrated?
+  - Historical validation note: dependent-mod GUI acceptance testing is still useful after downstream mods adopt the clean-break APIs.
 - `src/main/java/com/pauljoda/nucleus/common/container/BaseContainer.java`: phantom slot handling was mechanically changed from `ClickType` to `ContainerInput`.
   - Why it matters: `ContainerInput` semantics may not map one-for-one to old mouse click/modifier behavior, so phantom slot adjust/fill behavior needs in-game validation.
-  - QUESTION_FOR_PAUL: Should phantom slots preserve the exact old click behavior, or align with 26.1 vanilla container input semantics if they differ?
+  - Historical validation note: phantom slot behavior still needs in-game validation on an updated dependent mod.
 - `src/main/java/com/pauljoda/nucleus/manager/NetworkManager.java`, `src/main/java/com/pauljoda/nucleus/network/PacketManager.java`, and `src/main/java/com/pauljoda/nucleus/network/packets/bidirectional/SyncableFieldPacket.java`: networking now uses `CustomPacketPayload.Type` / `StreamCodec` only, and `sendToAllAround` changed its public signature.
   - Why it matters: sync packets reached compile and startup only; runtime side safety, registration coverage for future packets, client-only `ClientPacketDistributor` calls, and downstream source compatibility need validation.
   - Migration direction: breaking the old `TargetPoint` call shape is acceptable under Paul guidance if the 26.1 API remains correct and documented.
@@ -378,14 +448,27 @@ STATUS: Resolved review item: `pack.mcmeta` now includes 26.1 `min_format` and `
 STATUS: Resolved review item: obsolete `@OnlyIn` annotations were removed from tooltip interfaces and `EnergyUtils`.
 - `build.gradle` and `gradle.properties`: the port pins Java 25 and local toolchain discovery paths under `/home/hermes/.local/jdks`.
   - Why it matters: this is valid for the audit container but may be too environment-specific for Paul/dependent CI.
-  - QUESTION_FOR_PAUL: Should repository defaults require local Java 25 path hints, or should CI/dev docs own JDK installation while Gradle stays machine-neutral?
+  - Historical validation note: Paul/CI may want machine-neutral toolchain documentation instead of local path hints.
 
 ## Remaining work
 
 1. Keep migrating and runtime-test the custom GUI framework on 26.1; do not remove it unless Paul explicitly decides otherwise.
 2. Runtime-test connected textures generated by the new direct JSON `DataProvider` and decide whether the old multi-texture CTM model variants need to be rebuilt rather than the current cube-all connected-state output.
-3. Continue removing deprecated public `IItemHandler`, `IFluidHandler`, `IEnergyStorage`, and `FluidTank` compatibility surfaces where downstream breakage is acceptable. Current primary runtime APIs exist for item, energy, fluid transfer, and fluid GUI rendering, but several legacy getters/interfaces remain for source transition.
+3. Replace the remaining internal `FluidTank` storage if NeoForge provides a non-deprecated tank primitive suitable for block-entity persistence and transfer transactions.
 4. Runtime-test networking registration and side safety for `ClientPacketDistributor` and `SyncableFieldPacket`.
 5. Run dependent-mod GUI/capability/world-save smoke tests after downstream mods are updated to the 26.1 APIs.
 
 READY_FOR_REVIEW: `compileJava` and `build` pass on Java 25 after this migration pass. The latest headless `runClient` smoke reached mod loading/render-thread startup under Xvfb before the expected timeout kill.
+
+Coordinator clean-break verification on 2026-06-09 20:28 UTC:
+
+```bash
+JAVA_HOME=/home/hermes/.local/jdks/jdk25 PATH="$JAVA_HOME/bin:$PATH" ./gradlew compileJava --stacktrace
+JAVA_HOME=/home/hermes/.local/jdks/jdk25 PATH="$JAVA_HOME/bin:$PATH" ./gradlew build --stacktrace
+JAVA_HOME=/home/hermes/.local/jdks/jdk25 PATH="$JAVA_HOME/bin:$PATH" xvfb-run -a timeout 120 ./gradlew runClient --stacktrace
+```
+
+- STATUS: `compileJava` passed: `BUILD SUCCESSFUL in 7s`, `2 actionable tasks: 2 up-to-date`.
+- STATUS: `build` passed: `BUILD SUCCESSFUL in 7s`, `8 actionable tasks: 8 up-to-date`.
+- STATUS: Headless client smoke reached NeoForge/FML mod discovery and render-thread startup under Xvfb/llvmpipe. Mod list included `jei`, `minecraft`, `neoforge`, and `nucleus_pauljoda`; logs reached `Setting user: Dev`, LWJGL `3.4.1+2`, resource reload, and texture atlas creation including blocks/items/gui/JEI GUI atlases.
+- STATUS: `runClient` exited code `124` from the intentional `timeout 120`, treated as smoke success per coordinator criteria. Headless ALSA/OpenAL audio disablement remains container noise.

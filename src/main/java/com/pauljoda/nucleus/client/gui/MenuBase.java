@@ -262,7 +262,7 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
      *
      * @return Where the gui starts
      */
-    public int getGuiLeft() {
+    public int screenLeft() {
         return leftPos;
     }
 
@@ -271,7 +271,7 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
      *
      * @return Where the gui starts
      */
-    public int getGuiTop() {
+    public int screenTop() {
         return topPos;
     }
 
@@ -280,7 +280,7 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
      *
      * @return The size of the gui
      */
-    public int getXSize() {
+    public int screenWidth() {
         return imageWidth;
     }
 
@@ -289,7 +289,7 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
      *
      * @return The size of the gui
      */
-    public int getYSize() {
+    public int screenHeight() {
         return imageHeight;
     }
 

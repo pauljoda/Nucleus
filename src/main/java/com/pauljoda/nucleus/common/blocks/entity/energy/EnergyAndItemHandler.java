@@ -7,7 +7,6 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.energy.IEnergyStorage;
 
 /**
  * This file was created for Nucleus
@@ -69,7 +68,7 @@ public abstract class EnergyAndItemHandler extends InventoryHandler {
         super.onServerTick();
 
         // Handle Energy Difference
-        currentDifference = energyStorage.getEnergyStored() - lastEnergy;
+        currentDifference = energyStorage.getEnergy() - lastEnergy;
 
         // Update client
         if (currentDifference != lastDifference)
@@ -77,7 +76,7 @@ public abstract class EnergyAndItemHandler extends InventoryHandler {
 
         // Store for next round
         lastDifference = currentDifference;
-        lastEnergy = energyStorage.getEnergyStored();
+        lastEnergy = energyStorage.getEnergy();
     }
 
     @Override
@@ -86,7 +85,7 @@ public abstract class EnergyAndItemHandler extends InventoryHandler {
         energyStorage.load(input);
 
         // Check for bad tags
-        if (energyStorage.getMaxEnergyStored() == 0)
+        if (energyStorage.getCapacity() == 0)
             energyStorage.setCapacity(getDefaultEnergyStorageSize());
         if (energyStorage.getMaxReceive() == 0)
             energyStorage.setMaxReceive(getDefaultEnergyStorageSize());
@@ -98,15 +97,6 @@ public abstract class EnergyAndItemHandler extends InventoryHandler {
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
         energyStorage.save(output);
-    }
-
-    /**
-     * Retrieves the energy capability of the EnergyHandler object.
-     *
-     * @return The energy capability of the EnergyHandler object.
-     */
-    public IEnergyStorage getEnergyCapability() {
-        return energyStorage;
     }
 
     /**

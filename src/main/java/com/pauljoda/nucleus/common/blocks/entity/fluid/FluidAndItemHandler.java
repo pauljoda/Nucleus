@@ -8,14 +8,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidType;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
-import net.neoforged.neoforge.transfer.transaction.Transaction;
 
 import javax.annotation.Nonnull;
 
@@ -29,7 +25,7 @@ import javax.annotation.Nonnull;
  * @author Paul Davis - pauljoda
  * @since 8/30/20
  */
-public abstract class FluidAndItemHandler extends InventoryHandler implements IFluidHandler {
+public abstract class FluidAndItemHandler extends InventoryHandler {
 
     // NBT Tags
     protected static final String SIZE_NBT_TAG = "Size";
@@ -123,15 +119,6 @@ public abstract class FluidAndItemHandler extends InventoryHandler implements IF
     }
 
     /**
-     * Returns the fluid handler for the object.
-     *
-     * @return The fluid handler.
-     */
-    public IFluidHandler getFluidHandler() {
-        return this;
-    }
-
-    /**
      * Returns the NeoForge 26.1 transfer handler for this block entity's tanks.
      *
      * @return The first-class fluid resource handler.
@@ -171,146 +158,4 @@ public abstract class FluidAndItemHandler extends InventoryHandler implements IF
         }
     }
 
-    /*******************************************************************************************************************
-     * IFluidHandler                                                                                                   *
-     *******************************************************************************************************************/
-
-    /**
-     * Returns the number of fluid storage units ("tanks") available
-     *
-     * @return The number of tanks available
-     */
-    @Override
-    public int getTanks() {
-        return tanks.length;
-    }
-
-    /**
-     * Returns the FluidStack in a given tank.
-     *
-     * <p>
-     * <strong>IMPORTANT:</strong> This FluidStack <em>MUST NOT</em> be modified. This method is not for
-     * altering internal contents. Any implementers who are able to detect modification via this method
-     * should throw an exception. It is ENTIRELY reasonable and likely that the stack returned here will be a copy.
-     * </p>
-     *
-     * <p>
-     * <strong><em>SERIOUSLY: DO NOT MODIFY THE RETURNED FLUIDSTACK</em></strong>
-     * </p>
-     *
-     * @param tank Tank to query.
-     * @return FluidStack in a given tank. FluidStack.EMPTY if the tank is empty.
-     */
-    @Nonnull
-    @Override
-    public FluidStack getFluidInTank(int tank) {
-        FluidStack fluidStack = FluidStack.EMPTY.copy();
-        if (tank < tanks.length && tank >= 0)
-            return tanks[tank].getFluid().copy(); // Others should never modify, copy to prevent happening
-        return fluidStack;
-    }
-
-    /**
-     * Retrieves the maximum fluid amount for a given tank.
-     *
-     * @param tank Tank to query.
-     * @return The maximum fluid amount held by the tank.
-     */
-    @Override
-    public int getTankCapacity(int tank) {
-        return tank < tanks.length && tank >= 0 ?
-                tanks[tank].getCapacity()
-                : 0;
-    }
-
-    /**
-     * This function is a way to determine which fluids can exist inside a given handler. General purpose tanks will
-     * basically always return TRUE for this.
-     *
-     * @param tank  Tank to query for validity
-     * @param stack Stack to test with for validity
-     * @return TRUE if the tank can hold the FluidStack, not considering current state.
-     * (Basically, is a given fluid EVER allowed in this tank?) Return FALSE if the answer to that question is 'no.'
-     */
-    @Override
-    public boolean isFluidValid(int tank, @Nonnull FluidStack stack) {
-        return tank < tanks.length && tank >= 0 && tanks[tank].isFluidValid(stack); // First two checks prevent third
-    }
-
-    /**
-     * Fills fluid into internal tanks, distribution is left entirely to the IFluidHandler.
-     *
-     * @param resource FluidStack representing the Fluid and maximum amount of fluid to be filled.
-     * @param action   If false, fill will only be simulated.
-     * @return Amount of resource that was (or would have been, if simulated) filled.
-     */
-    @Override
-    public int fill(FluidStack resource, FluidAction action) {
-        if (!resource.isEmpty() && resource.getFluid() != Fluids.EMPTY && canFill(resource.getFluid())) {
-            try (Transaction transaction = Transaction.openRoot()) {
-                int inserted = fluidResourceHandler.insert(FluidResource.of(resource), resource.getAmount(), transaction);
-                if (action.execute())
-                    transaction.commit();
-                return inserted;
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * Drains fluid out of internal tanks, distribution is left entirely to the IFluidHandler.
-     * <p>
-     * This method is not Fluid-sensitive.
-     *
-     * @param maxDrain Maximum amount of fluid to drain.
-     * @param doDrain  If false, drain will only be simulated.
-     * @return FluidStack representing the Fluid and amount that was (or would have been, if
-     * simulated) drained.
-     */
-    @Nonnull
-    @Override
-    public FluidStack drain(int maxDrain, FluidAction doDrain) {
-        for (Integer x : getOutputTanks()) {
-            if (x < tanks.length) {
-                FluidResource resource = fluidResourceHandler.getResource(x);
-                if (!resource.isEmpty()) {
-                    try (Transaction transaction = Transaction.openRoot()) {
-                        int extracted = fluidResourceHandler.extract(x, resource, maxDrain, transaction);
-                        if (doDrain.execute())
-                            transaction.commit();
-                        return extracted == 0 ? FluidStack.EMPTY : resource.toStack(extracted);
-                    }
-                }
-            }
-        }
-        return FluidStack.EMPTY;
-    }
-
-    /**
-     * Drains fluid out of internal tanks, distribution is left entirely to the IFluidHandler.
-     *
-     * @param resource FluidStack representing the Fluid and maximum amount of fluid to be drained.
-     * @param doDrain  If false, drain will only be simulated.
-     * @return FluidStack representing the Fluid and amount that was (or would have been, if
-     * simulated) drained.
-     */
-    @Nonnull
-    @Override
-    public FluidStack drain(FluidStack resource, FluidAction doDrain) {
-        if (resource.isEmpty() || resource.getFluid() == Fluids.EMPTY || !canDrain(resource.getFluid()))
-            return FluidStack.EMPTY;
-
-        FluidResource fluidResource = FluidResource.of(resource);
-        for (Integer x : getOutputTanks()) {
-            if (x < tanks.length && fluidResource.matches(tanks[x].getFluid())) {
-                try (Transaction transaction = Transaction.openRoot()) {
-                    int extracted = fluidResourceHandler.extract(x, fluidResource, resource.getAmount(), transaction);
-                    if (doDrain.execute())
-                        transaction.commit();
-                    return extracted == 0 ? FluidStack.EMPTY : resource.copyWithAmount(extracted);
-                }
-            }
-        }
-        return FluidStack.EMPTY;
-    }
 }

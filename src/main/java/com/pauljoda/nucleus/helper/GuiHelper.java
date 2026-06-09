@@ -12,7 +12,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 
 import java.awt.*;
 
@@ -108,15 +107,6 @@ public class GuiHelper {
                 }
             }
         }
-    }
-
-    /**
-     * @deprecated Use {@link #renderFluid(GuiGraphicsExtractor, FluidStack, int, int, int, int, int)} with explicit
-     * fluid state and capacity. `FluidTank` is a deprecated NeoForge compatibility type in 26.1.
-     */
-    @Deprecated(forRemoval = true)
-    public static void renderFluid(GuiGraphicsExtractor graphics, FluidTank tank, int x, int y, int maxHeight, int maxWidth) {
-        renderFluid(graphics, tank.getFluid(), tank.getCapacity(), x, y, maxHeight, maxWidth);
     }
 
     /*******************************************************************************************************************
