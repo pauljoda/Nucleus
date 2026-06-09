@@ -59,7 +59,7 @@ public class EnergyUtils {
 
     public static int transferPower(@Nullable EnergyHandler source, @Nullable EnergyHandler destination,
                                     int maxAmount, boolean simulate) {
-        if (source == null || destination == null)
+        if (source == null || destination == null || maxAmount <= 0)
             return 0;
 
         try (Transaction transaction = Transaction.openRoot()) {

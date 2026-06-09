@@ -81,6 +81,10 @@ dependencies {
     compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
     // at runtime, use the full JEI jar for NeoForge
     runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+
+    testImplementation(platform("org.junit:junit-bom:5.10.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType(ProcessResources).configureEach {
@@ -100,6 +104,11 @@ tasks.withType(ProcessResources).configureEach {
 
 configurations.all {
     resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
+}
+
+configurations {
+    testImplementation.extendsFrom compileClasspath
+    testRuntimeOnly.extendsFrom runtimeClasspath
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc, group: "build") {
@@ -151,4 +160,8 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
