@@ -3,8 +3,6 @@ package com.pauljoda.nucleus.common;
 import com.pauljoda.nucleus.util.ClientUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -20,7 +18,6 @@ public interface IAdvancedToolTipProvider extends IToolTipProvider {
      * @return The list to display
      */
     @Nullable
-    @OnlyIn(Dist.CLIENT)
     List<String> getAdvancedToolTip(@Nonnull ItemStack stack);
 
     /**
@@ -31,7 +28,6 @@ public interface IAdvancedToolTipProvider extends IToolTipProvider {
      *
      * @return True to display
      */
-    @OnlyIn(Dist.CLIENT)
     default boolean displayShiftForInfo(ItemStack stack) {
         return true;
     }
@@ -44,7 +40,6 @@ public interface IAdvancedToolTipProvider extends IToolTipProvider {
      */
     @Nullable
     @Override
-    @OnlyIn(Dist.CLIENT)
     default List<String> getToolTip(@Nonnull ItemStack stack) {
         return ClientUtils.isShiftPressed() ?
                 getAdvancedToolTip(stack) :

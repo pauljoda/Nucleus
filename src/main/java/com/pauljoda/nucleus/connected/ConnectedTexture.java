@@ -2,7 +2,7 @@ package com.pauljoda.nucleus.connected;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 
 public interface ConnectedTexture {
@@ -22,5 +22,5 @@ public interface ConnectedTexture {
      * @param direction the direction to check
      * @return {@code true} if the given direction can be connected, {@code false} otherwise
      */
-    boolean canConnect(LevelAccessor level, BlockPos pos, Direction direction);
+    boolean canConnect(LevelReader level, BlockPos pos, Direction direction);
 }

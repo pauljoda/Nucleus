@@ -5,41 +5,36 @@ import com.pauljoda.nucleus.network.PacketManager;
 import com.pauljoda.nucleus.network.packets.ClientBoundPacket;
 import com.pauljoda.nucleus.network.packets.ServerBoundPacket;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.neoforged.neoforge.network.PacketDistributor;
+
+import com.pauljoda.nucleus.Nucleus;
 
 /**
  * A packet that syncs a field between client and server.
  */
 public record SyncableFieldPacket(boolean returnValue, int fieldId, double value, BlockPos blockPosition)
         implements ClientBoundPacket, ServerBoundPacket {
+    public static final Type<SyncableFieldPacket> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(Nucleus.MODID, "syncable_field"));
 
-    /*******************************************************************************************************************
-     * Encode/Decode                                                                                                   *
-     *******************************************************************************************************************/
+    public static final StreamCodec<RegistryFriendlyByteBuf, SyncableFieldPacket> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL, SyncableFieldPacket::returnValue,
+            ByteBufCodecs.INT, SyncableFieldPacket::fieldId,
+            ByteBufCodecs.DOUBLE, SyncableFieldPacket::value,
+            BlockPos.STREAM_CODEC, SyncableFieldPacket::blockPosition,
+            SyncableFieldPacket::new);
 
-    public static SyncableFieldPacket decode(FriendlyByteBuf buf) {
-        var returnValue = buf.readBoolean();
-        var fieldID = buf.readInt();
-        var value = buf.readDouble();
-        var blockPosition = BlockPos.of(buf.readLong());
-        return new SyncableFieldPacket(returnValue, fieldID, value, blockPosition);
-    }
-
-    /**
-     * Write to buffer
-     *
-     * @param buf
-     */
     @Override
-    public void write(FriendlyByteBuf buf) {
-        buf.writeBoolean(returnValue);
-        buf.writeInt(fieldId);
-        buf.writeDouble(value);
-        buf.writeLong(blockPosition.asLong());
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
     /*******************************************************************************************************************
@@ -90,12 +85,11 @@ public record SyncableFieldPacket(boolean returnValue, int fieldId, double value
             PacketManager.INSTANCE.sendToAllAround(
                     new SyncableFieldPacket(false, fieldId,
                             ((Syncable) level.getBlockEntity(blockPosition)).getVariable(fieldId), blockPosition),
-                    new PacketDistributor.TargetPoint(
-                            blockPosition.getX(),
-                            blockPosition.getY(),
-                            blockPosition.getZ(),
-                            25,
-                            level.dimension()));
+                    (ServerLevel) level,
+                    blockPosition.getX(),
+                    blockPosition.getY(),
+                    blockPosition.getZ(),
+                    25);
         else // On server update
             ((Syncable) level.getBlockEntity(blockPosition)).setVariable(fieldId, value);
     }

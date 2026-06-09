@@ -89,7 +89,7 @@ public abstract class InventoryHolderCapability implements IItemHandlerModifiabl
      * @param slot Which slot
      */
     protected boolean isValidSlot(int slot) {
-        return slot >= 0 && slot <= inventoryContents.inventory.size();
+        return slot >= 0 && slot < inventoryContents.inventory.size();
     }
 
     /*******************************************************************************************************************
@@ -111,7 +111,7 @@ public abstract class InventoryHolderCapability implements IItemHandlerModifiabl
     public void setStackInSlot(int slot, ItemStack stack) {
         if (!isValidSlot(slot))
             return;
-        if (ItemStack.isSameItemSameTags(this.inventoryContents.inventory.get(slot), stack))
+        if (ItemStack.isSameItemSameComponents(this.inventoryContents.inventory.get(slot), stack))
             return;
         this.inventoryContents.inventory.set(slot, stack);
         onInventoryChanged(slot);
@@ -181,7 +181,7 @@ public abstract class InventoryHolderCapability implements IItemHandlerModifiabl
         int limit = getSlotLimit(slot);
 
         if (!existing.isEmpty()) {
-            if (!ItemHandlerHelper.canItemStacksStack(stack, existing))
+            if (!ItemStack.isSameItemSameComponents(stack, existing))
                 return stack;
 
             limit -= existing.getCount();
@@ -194,14 +194,14 @@ public abstract class InventoryHolderCapability implements IItemHandlerModifiabl
 
         if (!simulate) {
             if (existing.isEmpty()) {
-                this.inventoryContents.inventory.set(slot, reachedLimit ? ItemHandlerHelper.copyStackWithSize(stack, limit) : stack);
+                this.inventoryContents.inventory.set(slot, reachedLimit ? stack.copyWithCount(limit) : stack);
             } else {
                 existing.setCount(existing.getCount() + (reachedLimit ? limit : stack.getCount()));
             }
             onInventoryChanged(slot);
         }
 
-        return reachedLimit ? ItemHandlerHelper.copyStackWithSize(stack, stack.getCount() - limit) : ItemStack.EMPTY;
+        return reachedLimit ? stack.copyWithCount(stack.getCount() - limit) : ItemStack.EMPTY;
     }
 
     /**
@@ -247,11 +247,11 @@ public abstract class InventoryHolderCapability implements IItemHandlerModifiabl
             return existing;
         } else {
             if (!simulate) {
-                this.inventoryContents.inventory.set(slot, ItemHandlerHelper.copyStackWithSize(existing, existing.getCount() - toExtract));
+                this.inventoryContents.inventory.set(slot, existing.copyWithCount(existing.getCount() - toExtract));
                 onInventoryChanged(slot);
             }
 
-            return ItemHandlerHelper.copyStackWithSize(existing, toExtract);
+            return existing.copyWithCount(toExtract);
         }
     }
 

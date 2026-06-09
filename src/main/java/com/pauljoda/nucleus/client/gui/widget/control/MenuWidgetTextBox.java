@@ -3,11 +3,12 @@ package com.pauljoda.nucleus.client.gui.widget.control;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.util.ClientUtils;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
 
@@ -69,13 +70,12 @@ public abstract class MenuWidgetTextBox extends BaseWidget {
      * @param button Mouse Button
      */
     @Override
-    public boolean mouseClicked(double x, double y, int button) {
-        textField.mouseClicked(x, y, button);
+    public void mouseDown(double x, double y, int button) {
+        textField.mouseClicked(new MouseButtonEvent(x, y, new MouseButtonInfo(button, 0)), false);
         if (button == 1 && textField.isFocused()) {
             textField.setValue("");
             fieldUpdated(textField.getValue());
         }
-        return false;
     }
 
     /**
@@ -85,12 +85,11 @@ public abstract class MenuWidgetTextBox extends BaseWidget {
      * @param keyCode The code
      */
     @Override
-    public boolean charTyped(char letter, int keyCode) {
+    public void keyTyped(char letter, int keyCode) {
         if (textField.isFocused()) {
-            textField.charTyped(letter, keyCode);
+            textField.charTyped(new CharacterEvent(letter));
             fieldUpdated(textField.getValue());
         }
-        return false;
     }
 
 
@@ -98,19 +97,18 @@ public abstract class MenuWidgetTextBox extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        textField.render(graphics, mouseX, mouseY, Minecraft.getInstance().getDeltaFrameTime());
-        GL11.glDisable(GL11.GL_ALPHA_TEST);
-        matrixStack.popPose();
+        matrixStack.pushMatrix();
+        textField.extractRenderState(graphics, mouseX, mouseY, 0.0F);
+        matrixStack.popMatrix();
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         // NO OP
     }
 

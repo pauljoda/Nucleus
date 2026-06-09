@@ -4,8 +4,13 @@ import com.pauljoda.nucleus.helper.GuiHelper;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+
+import javax.annotation.Nullable;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 /**
  * This file was created for Nucleus
@@ -20,22 +25,38 @@ import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 public class MenuWidgetFluidTank extends BaseWidget {
     // Variables
     protected int width, height;
+    protected Supplier<FluidStack> fluidSupplier;
+    protected IntSupplier capacitySupplier;
+    @Nullable
     protected FluidTank tank;
 
     /**
      * Creates a fluid tank renderer
      *
-     * @param parent    The parent GUI
-     * @param x         The x pos
-     * @param y         The y pos
-     * @param w         The width
-     * @param h         The height
-     * @param fluidTank The fluid tank, has fluid to render
+     * @param parent           The parent GUI
+     * @param x                The x pos
+     * @param y                The y pos
+     * @param w                The width
+     * @param h                The height
+     * @param fluidSupplier    Supplies the fluid to render
+     * @param capacitySupplier Supplies the capacity used to scale the fluid height
      */
-    public MenuWidgetFluidTank(MenuBase<?> parent, int x, int y, int w, int h, FluidTank fluidTank) {
+    public MenuWidgetFluidTank(MenuBase<?> parent, int x, int y, int w, int h,
+                               Supplier<FluidStack> fluidSupplier, IntSupplier capacitySupplier) {
         super(parent, x, y);
         this.width = w;
         this.height = h;
+        this.fluidSupplier = fluidSupplier;
+        this.capacitySupplier = capacitySupplier;
+    }
+
+    /**
+     * @deprecated Use the supplier constructor with explicit fluid state and capacity. `FluidTank` is a deprecated
+     * NeoForge compatibility type in 26.1.
+     */
+    @Deprecated(forRemoval = true)
+    public MenuWidgetFluidTank(MenuBase<?> parent, int x, int y, int w, int h, FluidTank fluidTank) {
+        this(parent, x, y, w, h, fluidTank::getFluid, fluidTank::getCapacity);
         this.tank = fluidTank;
     }
 
@@ -47,21 +68,21 @@ public class MenuWidgetFluidTank extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
-        // No Op
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+        // Fluid is rendered in the overlay pass so it appears above the base GUI texture.
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(xPos, yPos, 0);
-        GuiHelper.renderFluid(tank, 0, height, height, width);
+        matrixStack.pushMatrix();
+        matrixStack.translate(xPos, yPos);
+        GuiHelper.renderFluid(graphics, fluidSupplier.get(), capacitySupplier.getAsInt(), 0, height, height, width);
         RenderUtils.bindTexture(parent.textureLocation);
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 
     /**
@@ -96,11 +117,23 @@ public class MenuWidgetFluidTank extends BaseWidget {
         this.height = height;
     }
 
+    /**
+     * @deprecated Use the supplier constructor and keep tank state outside the widget. `FluidTank` is a deprecated
+     * NeoForge compatibility type in 26.1.
+     */
+    @Deprecated(forRemoval = true)
     public FluidTank getTank() {
         return tank;
     }
 
+    /**
+     * @deprecated Use the supplier constructor and keep tank state outside the widget. `FluidTank` is a deprecated
+     * NeoForge compatibility type in 26.1.
+     */
+    @Deprecated(forRemoval = true)
     public void setTank(FluidTank tank) {
         this.tank = tank;
+        this.fluidSupplier = tank::getFluid;
+        this.capacitySupplier = tank::getCapacity;
     }
 }

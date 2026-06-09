@@ -1,8 +1,9 @@
 package com.pauljoda.nucleus.client.gui.widget;
 
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 
 import java.awt.*;
 
@@ -19,7 +20,7 @@ import java.awt.*;
 public class NinePatchRenderer {
     // Variables
     protected int u, v, cellSize;
-    protected ResourceLocation patchLocation;
+    protected Identifier patchLocation;
 
     /**
      * Creates a renderer with given options
@@ -46,7 +47,7 @@ public class NinePatchRenderer {
      * @param size    The cell size
      * @param texture The texture location
      */
-    public NinePatchRenderer(int U, int V, int size, ResourceLocation texture) {
+    public NinePatchRenderer(int U, int V, int size, Identifier texture) {
         u = U;
         v = V;
         cellSize = size;
@@ -61,70 +62,70 @@ public class NinePatchRenderer {
      */
 
     // Corners
-    protected void renderTopLeftCorner(GuiGraphics graphics) {
-        graphics.blit(patchLocation, 0, 0, u, v, cellSize, cellSize);
+    protected void renderTopLeftCorner(GuiGraphicsExtractor graphics) {
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, patchLocation, 0, 0, u, v, cellSize, cellSize, 256, 256);
     }
 
-    protected void renderTopRightCorner(GuiGraphics graphics, int width) {
-        graphics.blit(patchLocation, width - cellSize, 0, u + cellSize + cellSize, v, cellSize, cellSize);
+    protected void renderTopRightCorner(GuiGraphicsExtractor graphics, int width) {
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, patchLocation, width - cellSize, 0, u + cellSize + cellSize, v, cellSize, cellSize, 256, 256);
     }
 
-    protected void renderBottomLeftCorner(GuiGraphics graphics, int height) {
-        graphics.blit(patchLocation, 0, height - cellSize, u, v + cellSize + cellSize, cellSize, cellSize);
+    protected void renderBottomLeftCorner(GuiGraphicsExtractor graphics, int height) {
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, patchLocation, 0, height - cellSize, u, v + cellSize + cellSize, cellSize, cellSize, 256, 256);
     }
 
-    protected void renderBottomRightCorner(GuiGraphics graphics, int width, int height) {
-        graphics.blit(patchLocation, width - cellSize, height - cellSize, u + cellSize + cellSize, v + cellSize + cellSize, cellSize, cellSize);
+    protected void renderBottomRightCorner(GuiGraphicsExtractor graphics, int width, int height) {
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, patchLocation, width - cellSize, height - cellSize, u + cellSize + cellSize, v + cellSize + cellSize, cellSize, cellSize, 256, 256);
     }
 
     // Edges
-    protected void renderTopEdge(GuiGraphics graphics, int width) {
+    protected void renderTopEdge(GuiGraphicsExtractor graphics, int width) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(cellSize, 0, 0);
-        matrixStack.scale(width - (cellSize * 2), 1, 0);
-        graphics.blit(patchLocation, 0, 0, u + cellSize, v, 1, cellSize);
-        matrixStack.popPose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(cellSize, 0);
+        matrixStack.scale(width - (cellSize * 2), 1);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, patchLocation, 0, 0, u + cellSize, v, 1, cellSize, 256, 256);
+        matrixStack.popMatrix();
     }
 
-    protected void renderBottomEdge(GuiGraphics graphics, int width, int height) {
+    protected void renderBottomEdge(GuiGraphicsExtractor graphics, int width, int height) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(cellSize, height - cellSize, 0);
-        matrixStack.scale(width - (cellSize * 2), 1, 0);
-        graphics.blit(patchLocation, 0, 0, u + cellSize, v + cellSize + cellSize, 1, cellSize);
-        matrixStack.popPose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(cellSize, height - cellSize);
+        matrixStack.scale(width - (cellSize * 2), 1);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, patchLocation, 0, 0, u + cellSize, v + cellSize + cellSize, 1, cellSize, 256, 256);
+        matrixStack.popMatrix();
     }
 
-    protected void renderLeftEdge(GuiGraphics graphics, int height) {
+    protected void renderLeftEdge(GuiGraphicsExtractor graphics, int height) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(0, cellSize, 0);
-        matrixStack.scale(1, height - (cellSize * 2), 0);
-        graphics.blit(patchLocation, 0, 0, u, v + cellSize, cellSize, 1);
-        matrixStack.popPose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(0, cellSize);
+        matrixStack.scale(1, height - (cellSize * 2));
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, patchLocation, 0, 0, u, v + cellSize, cellSize, 1, 256, 256);
+        matrixStack.popMatrix();
     }
 
-    protected void renderRightEdge(GuiGraphics graphics, int width, int height) {
+    protected void renderRightEdge(GuiGraphicsExtractor graphics, int width, int height) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(width - cellSize, cellSize, 0);
-        matrixStack.scale(1, height - (cellSize * 2), 0);
-        graphics.blit(patchLocation, 0, 0, u + cellSize + cellSize, v + cellSize, cellSize, 1);
-        matrixStack.popPose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(width - cellSize, cellSize);
+        matrixStack.scale(1, height - (cellSize * 2));
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, patchLocation, 0, 0, u + cellSize + cellSize, v + cellSize, cellSize, 1, 256, 256);
+        matrixStack.popMatrix();
     }
 
     // Background
-    protected void renderBackground(GuiGraphics graphics, int width, int height) {
+    protected void renderBackground(GuiGraphicsExtractor graphics, int width, int height) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(cellSize - 1, cellSize - 1, 0);
-        matrixStack.scale(width - (cellSize * 2) + 2, height - (cellSize * 2) + 2, 0);
-        graphics.blit(patchLocation, 0, 0, u + cellSize, v + cellSize, 1, 1);
-        matrixStack.popPose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(cellSize - 1, cellSize - 1);
+        matrixStack.scale(width - (cellSize * 2) + 2, height - (cellSize * 2) + 2);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, patchLocation, 0, 0, u + cellSize, v + cellSize, 1, 1, 256, 256);
+        matrixStack.popMatrix();
     }
 
-    public void render(GuiGraphics graphics, int x, int y, int width, int height) {
+    public void render(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
         render(graphics, x, y, width, height, null);
     }
 
@@ -139,14 +140,14 @@ public class NinePatchRenderer {
      * @param height Height
      * @param color  Color to render
      */
-    public void render(GuiGraphics graphics, int x, int y, int width, int height, Color color) {
+    public void render(GuiGraphicsExtractor graphics, int x, int y, int width, int height, Color color) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
+        matrixStack.pushMatrix();
         if (color != null)
             RenderUtils.setColor(color);
         if (patchLocation != null)
             RenderUtils.bindTexture(patchLocation);
-        matrixStack.translate(x, y, 0);
+        matrixStack.translate(x, y);
         renderBackground(graphics, width, height);
         renderTopEdge(graphics, width);
         renderBottomEdge(graphics, width, height);
@@ -156,6 +157,6 @@ public class NinePatchRenderer {
         renderTopRightCorner(graphics, width);
         renderBottomLeftCorner(graphics, height);
         renderBottomRightCorner(graphics, width, height);
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 }

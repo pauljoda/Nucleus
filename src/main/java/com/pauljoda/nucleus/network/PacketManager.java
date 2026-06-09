@@ -2,9 +2,10 @@ package com.pauljoda.nucleus.network;
 
 import com.pauljoda.nucleus.network.packets.ClientBoundPacket;
 import com.pauljoda.nucleus.network.packets.ServerBoundPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
  * This is a class for managing packets. It provides methods for sending packets to different targets
@@ -23,7 +24,7 @@ public class PacketManager {
      * @param packet the packet to send
      */
     public void sendToAll(ClientBoundPacket packet) {
-        PacketDistributor.ALL.noArg().send(packet);
+        PacketDistributor.sendToAllPlayers(packet);
     }
 
     /**
@@ -33,20 +34,17 @@ public class PacketManager {
      * @param player  the player to send the packet to
      */
     public void sendTo(ClientBoundPacket message, ServerPlayer player) {
-        player.connection.send(message);
+        PacketDistributor.sendToPlayer(player, message);
     }
 
     /**
      * Send a packet to all players that are within a certain radius around a certain point.
      *
      * @param message the packet to send
-     * @param point   the point around which the message should be sent
+     * @param level   the level to search for nearby players
      */
-    public void sendToAllAround(ClientBoundPacket message, PacketDistributor.TargetPoint point) {
-        var server = ServerLifecycleHooks.getCurrentServer();
-        if (server != null) {
-            PacketDistributor.NEAR.with(point).send(message);
-        }
+    public void sendToAllAround(ClientBoundPacket message, ServerLevel level, double x, double y, double z, double radius) {
+        PacketDistributor.sendToPlayersNear(level, null, x, y, z, radius, message);
     }
 
     /**
@@ -55,6 +53,6 @@ public class PacketManager {
      * @param message the packet to send
      */
     public void sendToServer(ServerBoundPacket message) {
-        PacketDistributor.SERVER.noArg().send(message);
+        ClientPacketDistributor.sendToServer(message);
     }
 }

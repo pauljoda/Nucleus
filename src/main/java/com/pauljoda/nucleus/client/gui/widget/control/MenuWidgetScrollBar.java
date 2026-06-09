@@ -2,8 +2,10 @@ package com.pauljoda.nucleus.client.gui.widget.control;
 
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
+import com.pauljoda.nucleus.util.RenderUtils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * This file was created for Nucleus
@@ -66,15 +68,14 @@ public abstract class MenuWidgetScrollBar extends BaseWidget {
      * @param button Mouse Button
      */
     @Override
-    public boolean mouseClicked(double x, double y, int button) {
+    public void mouseDown(double x, double y, int button) {
         isMoving = true;
         currentPosition = (int) ((y - yPos) - 7);
         if (currentPosition > maxRange)
             currentPosition = maxRange;
         else if (currentPosition < 0)
             currentPosition = 0;
-        onScroll(currentPosition / maxRange);
-        return false;
+        onScroll((float) currentPosition / maxRange);
     }
 
     /**
@@ -85,14 +86,13 @@ public abstract class MenuWidgetScrollBar extends BaseWidget {
      * @param button Mouse Button
      */
     @Override
-    public boolean mouseDragged(double x, double y, int button, double xAmount, double yAmount) {
+    public void mouseDrag(double x, double y, int button, double xAmount, double yAmount) {
         currentPosition = (int) ((y - yPos) - 7);
         if (currentPosition > maxRange)
             currentPosition = maxRange;
         else if (currentPosition < 0)
             currentPosition = 0;
-        onScroll(currentPosition / maxRange);
-        return false;
+        onScroll((float) currentPosition / maxRange);
     }
 
     /**
@@ -103,35 +103,36 @@ public abstract class MenuWidgetScrollBar extends BaseWidget {
      * @param button Mouse Button
      */
     @Override
-    public boolean mouseReleased(double x, double y, int button) {
+    public void mouseUp(double x, double y, int button) {
         isMoving = false;
-        onScroll(currentPosition / maxRange);
-        return false;
+        onScroll((float) currentPosition / maxRange);
     }
 
     /**
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
 
         if (currentPosition > maxRange)
             currentPosition = maxRange;
 
-        matrixStack.pushPose();
-        matrixStack.translate(xPos + 1, yPos + currentPosition + 1, 0);
+        matrixStack.pushMatrix();
+        matrixStack.translate(xPos + 1, yPos + currentPosition + 1);
         if (isMoving && !Minecraft.getInstance().mouseHandler.isLeftPressed())
             isMoving = false;
-        graphics.blit(parent.textureLocation, 0, 0, isMoving ? nubU + 12 : nubU, nubV, 12, 15);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, 0, 0,
+                isMoving ? nubU + 12 : nubU, nubV, 12, 15, 256, 256);
+        matrixStack.popMatrix();
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
-        // No Op
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+        // Scrollbar has no overlay layer.
     }
 
     /**

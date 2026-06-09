@@ -4,7 +4,7 @@ import com.pauljoda.nucleus.util.ClientUtils;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import javax.annotation.Nullable;
 import java.awt.*;
@@ -67,19 +67,19 @@ public class MenuWidgetText extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
-        // No Op
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+        // Text is rendered in the overlay pass so labels appear above base widgets.
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
+        matrixStack.pushMatrix();
 
-        matrixStack.translate(xPos, yPos, 0);
+        matrixStack.translate(xPos, yPos);
         RenderUtils.prepareRenderState();
 
 
@@ -88,12 +88,13 @@ public class MenuWidgetText extends BaseWidget {
         else
             RenderUtils.restoreColor();
 
-        graphics.drawString(fontRenderer, label, 0, 0, colorDefault, false);
+        RenderUtils.text(graphics, fontRenderer, label, 0, 0,
+                color != null ? color.getRGB() : colorDefault, dropShadow);
 
         RenderUtils.restoreColor();
         RenderUtils.restoreRenderState();
 
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 
     /**

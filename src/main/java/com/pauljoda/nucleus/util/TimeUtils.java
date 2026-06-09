@@ -1,7 +1,7 @@
 package com.pauljoda.nucleus.util;
 
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.event.TickEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 /**
  * This file was created for Nucleus
@@ -74,8 +74,7 @@ public class TimeUtils {
     }
 
     @SubscribeEvent
-    public void onWorldTick(TickEvent.LevelTickEvent levelTickEvent) {
-        if (levelTickEvent.phase == TickEvent.Phase.END)
-            tick = levelTickEvent.level.getGameTime();
+    public void onWorldTick(LevelTickEvent.Post levelTickEvent) {
+        tick = levelTickEvent.getLevel().getGameTime();
     }
 }

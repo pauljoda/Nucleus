@@ -5,7 +5,8 @@ import com.pauljoda.nucleus.util.ClientUtils;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 
 import javax.annotation.Nullable;
 import java.awt.*;
@@ -105,33 +106,34 @@ public abstract class MenuWidgetButton extends BaseWidget {
      * Renders the button component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
+        matrixStack.pushMatrix();
         RenderUtils.prepareRenderState();
         RenderUtils.bindTexture(parent.textureLocation);
-        matrixStack.translate(xPos, yPos, 0);
-        graphics.blit(parent.textureLocation, 0, 0, u, isOver ? v + height : v, width, height);
+        matrixStack.translate(xPos, yPos);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, 0, 0, u,
+                isOver ? v + height : v, width, height, 256, 256);
         RenderUtils.restoreRenderState();
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 
     /**
      * Renders the button overlay, including the label if it is not null
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         if (label != null) {
             var matrixStack = graphics.pose();
-            matrixStack.pushPose();
+            matrixStack.pushMatrix();
             RenderUtils.prepareRenderState();
             RenderUtils.restoreColor();
             float size = fontRenderer.width(label);
-            matrixStack.translate(xPos + (width / 2F - size / 2F), yPos + 6, 0);
-            graphics.drawString(fontRenderer, label, 0, 0, Color.DARK_GRAY.getRGB(), false);
+            matrixStack.translate(xPos + (width / 2F - size / 2F), yPos + 6);
+            RenderUtils.text(graphics, fontRenderer, label, 0, 0, Color.DARK_GRAY.getRGB(), false);
             RenderUtils.restoreColor();
             RenderUtils.restoreRenderState();
-            matrixStack.popPose();
+            matrixStack.popMatrix();
         }
     }
 

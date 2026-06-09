@@ -2,11 +2,9 @@ package com.pauljoda.nucleus.network.packets;
 
 import com.pauljoda.nucleus.Nucleus;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.PlayPayloadContext;
-
-import java.util.Locale;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
  * ServerBoundPacket Interface that handles packets on the server side.
@@ -25,9 +23,9 @@ public interface ServerBoundPacket extends CustomPacketPayload {
      *
      * @param context Provides context for the payload being handled
      */
-    default void handleOnServer(PlayPayloadContext context) {
-        context.workHandler().execute(() -> {
-            if (context.player().orElse(null) instanceof ServerPlayer serverPlayer) {
+    default void handleOnServer(IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer serverPlayer) {
                 handleOnServer(serverPlayer);
             }
         });

@@ -3,10 +3,12 @@ package com.pauljoda.nucleus.util;
 import com.pauljoda.nucleus.common.blocks.IToolable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.BlockCapability;
@@ -234,9 +236,9 @@ public class LevelUtils {
      */
     public static void dropStack(Level world, ItemStack stack, BlockPos pos) {
         if (stack != null && stack.getCount() > 0) {
-            float rx = world.random.nextFloat() * 0.8F;
-            float ry = world.random.nextFloat() * 0.8F;
-            float rz = world.random.nextFloat() * 0.8F;
+            float rx = world.getRandom().nextFloat() * 0.8F;
+            float ry = world.getRandom().nextFloat() * 0.8F;
+            float rz = world.getRandom().nextFloat() * 0.8F;
 
             ItemEntity itemEntity = new ItemEntity(world,
                     pos.getX() + rx, pos.getY() + ry, pos.getZ() + rz,
@@ -245,9 +247,9 @@ public class LevelUtils {
             float factor = 0.05F;
 
             itemEntity.setDeltaMovement(
-                    world.random.nextGaussian() * factor,
-                    world.random.nextGaussian() * factor + 0.2F,
-                    world.random.nextGaussian() * factor
+                    world.getRandom().nextGaussian() * factor,
+                    world.getRandom().nextGaussian() * factor + 0.2F,
+                    world.getRandom().nextGaussian() * factor
             );
 
             world.addFreshEntity(itemEntity);
@@ -284,12 +286,12 @@ public class LevelUtils {
      * @return True if successful
      */
     public static boolean breakBlockSavingNBT(Level world, BlockPos pos, @Nonnull IToolable block) {
-        if (world.isClientSide) return false;
+        if (world.isClientSide()) return false;
         if (world.getBlockEntity(pos) != null) {
             BlockEntity savableTile = world.getBlockEntity(pos);
-            CompoundTag tag = savableTile.saveWithFullMetadata();
+            CompoundTag tag = savableTile.saveCustomOnly(world.registryAccess());
             ItemStack stack = block.getStackDroppedByWrench(world, pos);
-            stack.setTag(tag);
+            stack.set(DataComponents.BLOCK_ENTITY_DATA, TypedEntityData.of(savableTile.getType(), tag));
             dropStack(world, stack, pos);
             world.removeBlockEntity(pos); // Cancel drop logic
             world.removeBlock(pos, false);
@@ -306,15 +308,9 @@ public class LevelUtils {
      * @param stack The stack that had the tag
      */
     public static void writeStackNBTToBlock(Level world, BlockPos pos, ItemStack stack) {
-        if (stack.hasTag()) {
-            if (world.getBlockEntity(pos) != null) {
-                BlockEntity tile = world.getBlockEntity(pos);
-                CompoundTag tag = stack.getTag();
-                tag.putInt("x", pos.getX()); // Add back MC tags
-                tag.putInt("y", pos.getY());
-                tag.putInt("z", pos.getZ());
-                tile.load(tag);
-            }
+        if (stack.has(DataComponents.BLOCK_ENTITY_DATA) && world.getBlockEntity(pos) != null) {
+            BlockEntity tile = world.getBlockEntity(pos);
+            stack.get(DataComponents.BLOCK_ENTITY_DATA).loadInto(tile, world.registryAccess());
         }
     }
 }

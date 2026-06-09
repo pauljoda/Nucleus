@@ -1,10 +1,11 @@
 package com.pauljoda.nucleus.recipe;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.advancements.Criterion;
 import net.minecraft.data.recipes.RecipeBuilder;
 import net.minecraft.data.recipes.RecipeOutput;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,7 +31,7 @@ public interface CustomRecipeBuilder<R extends Recipe<?>> extends RecipeBuilder 
      * @param pId           The resource location to assign to the saved recipe.
      */
     @Override
-    default void save(RecipeOutput pRecipeOutput, ResourceLocation pId) {
+    default void save(RecipeOutput pRecipeOutput, ResourceKey<Recipe<?>> pId) {
         var recipe = createRecipe();
         pRecipeOutput.accept(pId, recipe, null);
     }
@@ -68,7 +69,7 @@ public interface CustomRecipeBuilder<R extends Recipe<?>> extends RecipeBuilder 
      * @return The result of the recipe.
      */
     @Override
-    default Item getResult() {
-        return null;
+    default ResourceKey<Recipe<?>> defaultId() {
+        return ResourceKey.create(Registries.RECIPE, Identifier.fromNamespaceAndPath("nucleus", "custom_recipe"));
     }
 }

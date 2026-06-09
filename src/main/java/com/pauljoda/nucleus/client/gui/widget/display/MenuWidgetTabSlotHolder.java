@@ -2,7 +2,7 @@ package com.pauljoda.nucleus.client.gui.widget.display;
 
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.inventory.Slot;
 
 /**
@@ -60,7 +60,7 @@ public class MenuWidgetTabSlotHolder extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         if (doRender) {
             slotTexture.render(graphics, guiLeft, guiTop, mouseX, mouseY);
         }
@@ -70,7 +70,7 @@ public class MenuWidgetTabSlotHolder extends BaseWidget {
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         // No op
     }
 

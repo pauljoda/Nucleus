@@ -3,9 +3,9 @@ package com.pauljoda.nucleus.common.blocks.entity;
 import com.pauljoda.nucleus.network.PacketManager;
 import com.pauljoda.nucleus.network.packets.bidirectional.SyncableFieldPacket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * This file was created for Nucleus - Java
@@ -68,8 +68,7 @@ public abstract class Syncable extends UpdatingBlockEntity {
     public void sendValueToClient(int id, double value) {
         PacketManager.INSTANCE.sendToAllAround(
                 new SyncableFieldPacket(false, id, value, getBlockPos()),
-                new PacketDistributor.TargetPoint(
-                        getBlockPos().getX(), getBlockPos().getY(), getBlockPos().getZ(),
-                        25, getLevel().dimension()));
+                (ServerLevel) getLevel(),
+                getBlockPos().getX(), getBlockPos().getY(), getBlockPos().getZ(), 25);
     }
 }

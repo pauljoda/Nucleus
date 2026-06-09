@@ -1,7 +1,7 @@
 package com.pauljoda.nucleus.helper;
 
-import net.minecraft.client.renderer.block.model.ItemTransform;
-import net.minecraft.client.renderer.block.model.ItemTransforms;
+import net.minecraft.client.resources.model.cuboid.ItemTransform;
+import net.minecraft.client.resources.model.cuboid.ItemTransforms;
 import org.joml.Vector3f;
 
 public class ModelHelper {
@@ -34,6 +34,7 @@ public class ModelHelper {
                 createTransform(0, 13, 7, 0, 180, 0, 1),
                 ItemTransform.NO_TRANSFORM,
                 createTransform(0, 2, 0, 0, 0, 0, 0.5f),
+                ItemTransform.NO_TRANSFORM,
                 ItemTransform.NO_TRANSFORM
         );
     }

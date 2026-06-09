@@ -2,10 +2,18 @@ package com.pauljoda.nucleus.common.items;
 
 import com.pauljoda.nucleus.capabilities.item.InventoryContents;
 import com.pauljoda.nucleus.capabilities.item.InventoryHolderCapability;
+import com.pauljoda.nucleus.common.components.ItemInventoryComponent;
+import com.pauljoda.nucleus.registration.NucleusDataComponents;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -18,13 +26,14 @@ import org.jetbrains.annotations.NotNull;
  * @author Paul Davis - pauljoda
  * @since 11/13/17
  */
-public abstract class InventoryHandlerItem implements IItemHandlerModifiable {
+public abstract class InventoryHandlerItem implements IItemHandlerModifiable, ResourceHandler<ItemResource> {
 
     // Variables
     private ItemStack heldStack;
 
     private final InventoryContents inventory;
     private final IItemHandlerModifiable capability;
+    private final InventoryJournal inventoryJournal = new InventoryJournal();
 
     /**
      * Creates a handler with given stack
@@ -47,7 +56,7 @@ public abstract class InventoryHandlerItem implements IItemHandlerModifiable {
             protected boolean isItemValidForSlot(int index, ItemStack stack) {
                 return InventoryHandlerItem.this.isItemValidForSlot(index, stack);
             }
-        };
+        }.addCallback((handler, slotNumber) -> saveInventoryToStack());
 
         checkStackTag();
     }
@@ -98,12 +107,30 @@ public abstract class InventoryHandlerItem implements IItemHandlerModifiable {
      * Makes sure we always have a valid tag
      */
     protected void checkStackTag() {
-        // Give the stack a tag
-        if (!heldStack.hasTag()) {
-            heldStack.setTag(new CompoundTag());
-            inventory.save(heldStack.getTag());
-        } else
-            inventory.load(heldStack.getTag());
+        ItemInventoryComponent component = heldStack.get(NucleusDataComponents.ITEM_INVENTORY.get());
+        if (component != null) {
+            component.loadInto(inventory.inventory);
+            return;
+        }
+
+        if (heldStack.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag legacyTag = heldStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            inventory.load(legacyTag);
+            saveInventoryToStack();
+            removeLegacyInventoryData(legacyTag);
+            return;
+        }
+
+        saveInventoryToStack();
+    }
+
+    protected void saveInventoryToStack() {
+        heldStack.set(NucleusDataComponents.ITEM_INVENTORY.get(), ItemInventoryComponent.from(inventory.inventory));
+    }
+
+    protected void restoreInventoryFromComponent(ItemInventoryComponent component) {
+        component.loadInto(inventory.inventory);
+        saveInventoryToStack();
     }
 
     /**
@@ -225,5 +252,86 @@ public abstract class InventoryHandlerItem implements IItemHandlerModifiable {
     @Override
     public boolean isItemValid(int slot, @NotNull ItemStack stack) {
         return capability.isItemValid(slot, stack);
+    }
+
+    /*******************************************************************************************************************
+     * ResourceHandler                                                                                                 *
+     *******************************************************************************************************************/
+
+    @Override
+    public int size() {
+        return getSlots();
+    }
+
+    @Override
+    public ItemResource getResource(int index) {
+        return ItemResource.of(getStackInSlot(index));
+    }
+
+    @Override
+    public long getAmountAsLong(int index) {
+        return getStackInSlot(index).getCount();
+    }
+
+    @Override
+    public long getCapacityAsLong(int index, ItemResource resource) {
+        if (!resource.isEmpty() && !isValid(index, resource))
+            return 0;
+        return getSlotLimit(index);
+    }
+
+    @Override
+    public boolean isValid(int index, ItemResource resource) {
+        return resource.isEmpty() || isItemValid(index, resource.toStack());
+    }
+
+    @Override
+    public int insert(int index, ItemResource resource, int amount, TransactionContext transaction) {
+        if (resource.isEmpty() || amount <= 0)
+            return 0;
+
+        ItemStack toInsert = resource.toStack(amount);
+        ItemStack remainder = insertItem(index, toInsert, true);
+        int inserted = amount - remainder.getCount();
+        if (inserted > 0) {
+            inventoryJournal.updateSnapshots(transaction);
+            insertItem(index, resource.toStack(inserted), false);
+        }
+        return inserted;
+    }
+
+    @Override
+    public int extract(int index, ItemResource resource, int amount, TransactionContext transaction) {
+        if (resource.isEmpty() || amount <= 0 || !resource.matches(getStackInSlot(index)))
+            return 0;
+
+        ItemStack extractedStack = extractItem(index, amount, true);
+        int extracted = extractedStack.getCount();
+        if (extracted > 0) {
+            inventoryJournal.updateSnapshots(transaction);
+            extractItem(index, extracted, false);
+        }
+        return extracted;
+    }
+
+    private class InventoryJournal extends SnapshotJournal<ItemInventoryComponent> {
+        @Override
+        protected ItemInventoryComponent createSnapshot() {
+            return ItemInventoryComponent.from(inventory.inventory);
+        }
+
+        @Override
+        protected void revertToSnapshot(ItemInventoryComponent snapshot) {
+            restoreInventoryFromComponent(snapshot);
+        }
+    }
+
+    private void removeLegacyInventoryData(CompoundTag legacyTag) {
+        legacyTag.remove("Items");
+        if (legacyTag.isEmpty()) {
+            heldStack.remove(DataComponents.CUSTOM_DATA);
+        } else {
+            CustomData.set(DataComponents.CUSTOM_DATA, heldStack, legacyTag);
+        }
     }
 }

@@ -6,12 +6,12 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.capabilities.BlockCapability;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.transfer.access.ItemAccess;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.energy.EnergyHandlerUtil;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 
 import javax.annotation.Nullable;
 import java.math.RoundingMode;
@@ -39,7 +39,6 @@ public class EnergyUtils {
      * @param energy The number
      * @return A readable number
      */
-    @OnlyIn(Dist.CLIENT)
     public static String getEnergyDisplay(int energy) {
         // If shift is press, give normal amount
         if (ClientUtils.isShiftPressed())
@@ -78,7 +77,20 @@ public class EnergyUtils {
         // Try move power
         return destination
                 .receiveEnergy(source
-                        .extractEnergy(amount, simulate), simulate);
+                .extractEnergy(amount, simulate), simulate);
+    }
+
+    public static int transferPower(@Nullable EnergyHandler source, @Nullable EnergyHandler destination,
+                                    int maxAmount, boolean simulate) {
+        if (source == null || destination == null)
+            return 0;
+
+        try (Transaction transaction = Transaction.openRoot()) {
+            int moved = EnergyHandlerUtil.move(source, destination, maxAmount, transaction);
+            if (!simulate)
+                transaction.commit();
+            return moved;
+        }
     }
 
     /**
@@ -96,13 +108,19 @@ public class EnergyUtils {
         int consumedPower = 0;
 
         for (Direction dir : Direction.values()) {
-            BlockEntity tile = level.getBlockEntity(pos.relative(dir));
-            if (tile != null &&
-                    CapabilityUtils.getBlockCapability(level, Capabilities.EnergyStorage.BLOCK, tile.getBlockPos(), dir.getOpposite()) != null)
-                consumedPower += transferPower(source,
-                        CapabilityUtils.getBlockCapability(level, Capabilities.EnergyStorage.BLOCK, tile.getBlockPos(), dir.getOpposite()),
-                        amountPerFace,
-                        simulated);
+            EnergyHandler target = level.getCapability(Capabilities.Energy.BLOCK, pos.relative(dir), dir.getOpposite());
+            if (target != null) {
+                int available = source.extractEnergy(amountPerFace, true);
+                try (Transaction transaction = Transaction.openRoot()) {
+                    int inserted = target.insert(available, transaction);
+                    int extracted = source.extractEnergy(inserted, true);
+                    if (!simulated) {
+                        source.extractEnergy(extracted, false);
+                        transaction.commit();
+                    }
+                    consumedPower += extracted;
+                }
+            }
         }
 
         return consumedPower;
@@ -123,11 +141,19 @@ public class EnergyUtils {
         int receivedPower = 0;
 
         for (Direction dir : Direction.values()) {
-            BlockEntity tile = level.getBlockEntity(pos.relative(dir));
-            if (tile != null &&
-                    CapabilityUtils.getBlockCapability(level, Capabilities.EnergyStorage.BLOCK, tile.getBlockPos(), dir.getOpposite()) != null)
-                receivedPower += transferPower(CapabilityUtils.getBlockCapability(level, Capabilities.EnergyStorage.BLOCK, tile.getBlockPos(), dir.getOpposite()),
-                        source, amountPerFace, simulated);
+            EnergyHandler sourceHandler = level.getCapability(Capabilities.Energy.BLOCK, pos.relative(dir), dir.getOpposite());
+            if (sourceHandler != null) {
+                int receivable = source.receiveEnergy(amountPerFace, true);
+                try (Transaction transaction = Transaction.openRoot()) {
+                    int extracted = sourceHandler.extract(receivable, transaction);
+                    int inserted = source.receiveEnergy(extracted, true);
+                    if (!simulated) {
+                        source.receiveEnergy(inserted, false);
+                        transaction.commit();
+                    }
+                    receivedPower += inserted;
+                }
+            }
         }
 
         return receivedPower;
@@ -139,11 +165,12 @@ public class EnergyUtils {
      * @param stack   The stack
      * @param toolTip The tip list
      */
-    @OnlyIn(Dist.CLIENT)
     public static void addToolTipInfo(ItemStack stack, List<Component> toolTip) {
-        if (stack.getCapability(Capabilities.EnergyStorage.ITEM, null) != null) {
-            IEnergyStorage energyStorage = stack.getCapability(Capabilities.EnergyStorage.ITEM, null);
-            addToolTipInfo(energyStorage, toolTip, -1, -1);
+        EnergyHandler energyHandler = ItemAccess.forStack(stack).getCapability(Capabilities.Energy.ITEM);
+        if (energyHandler != null) {
+            addToolTipInfo(energyHandler, toolTip,
+                    energyHandler.getCapacityAsInt() - energyHandler.getAmountAsInt(),
+                    energyHandler.getAmountAsInt());
         }
     }
 
@@ -155,7 +182,6 @@ public class EnergyUtils {
      * @param insert        The max insert, -1 to skip
      * @param extract       The max extract, -1 to skip
      */
-    @OnlyIn(Dist.CLIENT)
     public static void addToolTipInfo(IEnergyStorage energyStorage, List<Component> toolTip, int insert, int extract) {
         toolTip.add(Component.translatable(ChatFormatting.GOLD + ClientUtils.translate("nucleus.energy.energyStored")));
         toolTip.add(Component.translatable("  " + EnergyUtils.getEnergyDisplay(energyStorage.getEnergyStored()) + " / " +
@@ -175,4 +201,25 @@ public class EnergyUtils {
             }
         }
     }
+
+    public static void addToolTipInfo(EnergyHandler energyHandler, List<Component> toolTip, int insert, int extract) {
+        toolTip.add(Component.translatable(ChatFormatting.GOLD + ClientUtils.translate("nucleus.energy.energyStored")));
+        toolTip.add(Component.translatable("  " + EnergyUtils.getEnergyDisplay(energyHandler.getAmountAsInt()) + " / " +
+                EnergyUtils.getEnergyDisplay(energyHandler.getCapacityAsInt())));
+        if (!ClientUtils.isShiftPressed()) {
+            toolTip.add(Component.translatable(""));
+            toolTip.add(Component.translatable(ChatFormatting.GRAY + "" + ChatFormatting.ITALIC + ClientUtils.translate("nucleus.text.shift_info")));
+        } else {
+            if (insert > -1) {
+                toolTip.add(Component.translatable(""));
+                toolTip.add(Component.translatable(ChatFormatting.GREEN + ClientUtils.translate("nucleus.energy.energyIn")));
+                toolTip.add(Component.translatable("  " + EnergyUtils.getEnergyDisplay(insert)));
+            }
+            if (extract > -1) {
+                toolTip.add(Component.translatable(ChatFormatting.DARK_RED + ClientUtils.translate("nucleus.energy.energyOut")));
+                toolTip.add(Component.translatable("  " + EnergyUtils.getEnergyDisplay(extract)));
+            }
+        }
+    }
+
 }

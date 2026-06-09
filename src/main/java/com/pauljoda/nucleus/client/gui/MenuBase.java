@@ -1,19 +1,18 @@
 package com.pauljoda.nucleus.client.gui;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.client.gui.widget.display.MenuWidgetText;
 import com.pauljoda.nucleus.client.gui.widget.display.MenuTabCollection;
 import com.pauljoda.nucleus.util.ClientUtils;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 
@@ -35,7 +34,7 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
     // Variables
     protected MenuWidgetText titleComponent;
 
-    public ResourceLocation textureLocation;
+    public Identifier textureLocation;
 
     protected List<BaseWidget> components = new ArrayList<>();
     protected MenuTabCollection rightTabs;
@@ -50,18 +49,15 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
      * @param title     The title of the gui
      * @param texture   The location of the background texture
      */
-    public MenuBase(T inventory, Inventory playerInventory, Component title, int width, int height, ResourceLocation texture) {
-        super(inventory, playerInventory, title);
-        font = Minecraft.getInstance().font;
-        this.imageWidth = width;
-        this.imageHeight = height;
+    public MenuBase(T inventory, Inventory playerInventory, Component title, int width, int height, Identifier texture) {
+        super(inventory, playerInventory, title, width, height);
         this.textureLocation = texture;
 
         rightTabs = new MenuTabCollection(this, imageWidth + 1);
         leftTabs = new MenuTabCollection(this, -1);
 
         titleComponent = new MenuWidgetText(this,
-                imageWidth / 2 - (Minecraft.getInstance().font.width(ClientUtils.translate(title.getString())) / 2),
+                imageWidth / 2 - (font.width(ClientUtils.translate(title.getString())) / 2),
                 3, title.getString(), null);
         components.add(titleComponent);
 
@@ -109,52 +105,58 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
     /**
      * Called when the mouse is clicked
      *
-     * @param mouseX      The X Position
-     * @param mouseY      The Y Position
-     * @param mouseButton The button pressed
+     * @param event       The mouse button event
+     * @param doubleClick Whether this click is a double-click
      */
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int mouseButton) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int mouseButton = event.button();
         components.forEach((baseComponent -> {
             if (baseComponent.isMouseOver(mouseX - leftPos, mouseY - topPos)) {
                 baseComponent.mouseDown(mouseX - leftPos, mouseY - topPos, mouseButton);
             }
         }));
-        return super.mouseClicked(mouseX, mouseY, mouseButton);
+        return super.mouseClicked(event, doubleClick);
     }
 
     /**
      * Called when the mouse releases a button
      *
-     * @param mouseX The X Position
-     * @param mouseY The Y Position
-     * @param state  The button released
+     * @param event The mouse button event
      */
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int state) {
+    public boolean mouseReleased(MouseButtonEvent event) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int state = event.button();
         components.forEach((baseComponent -> {
             if (baseComponent.isMouseOver(mouseX - leftPos, mouseY - topPos)) {
                 baseComponent.mouseUp(mouseX - leftPos, mouseY - topPos, state);
             }
         }));
-        return super.mouseReleased(mouseX, mouseY, state);
+        return super.mouseReleased(event);
     }
 
     /**
      * Used to track when the mouse is clicked and dragged
      *
-     * @param mouseX             The Current X Position
-     * @param mouseY             The Current Y Position
-     * @param clickedMouseButton The button being dragged
+     * @param event       The mouse button event
+     * @param xDragAmount The horizontal drag amount
+     * @param yDragAmount The vertical drag amount
      */
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int clickedMouseButton, double xDragAmount, double yDragAmount) {
+    public boolean mouseDragged(MouseButtonEvent event, double xDragAmount, double yDragAmount) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int clickedMouseButton = event.button();
         components.forEach((baseComponent -> {
             if (baseComponent.isMouseOver(mouseX - leftPos, mouseY - topPos)) {
                 baseComponent.mouseDrag(mouseX - leftPos, mouseY - topPos, clickedMouseButton, xDragAmount, yDragAmount);
             }
         }));
-        return super.mouseDragged(mouseX, mouseY, clickedMouseButton, xDragAmount, yDragAmount);
+        return super.mouseDragged(event, xDragAmount, yDragAmount);
     }
 
     /**
@@ -170,28 +172,26 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
     /**
      * Called when a key is typed
      *
-     * @param typedChar The letter pressed, as a char
-     * @param keyCode   The Java key code
+     * @param event The typed character event
      */
     @Override
-    public boolean charTyped(char typedChar, int keyCode) {
-        components.forEach((baseComponent -> baseComponent.keyTyped(typedChar, keyCode)));
-        return super.charTyped(typedChar, keyCode);
+    public boolean charTyped(CharacterEvent event) {
+        char typedChar = (char) event.codepoint();
+        components.forEach((baseComponent -> baseComponent.keyTyped(typedChar, event.codepoint())));
+        return super.charTyped(event);
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        renderBackground(graphics, mouseX, mouseY, partialTicks);
-        super.render(graphics, mouseX, mouseY, partialTicks);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTicks);
         drawTopLayer(graphics, mouseX, mouseY);
-        this.renderTooltip(graphics, mouseX, mouseY);
     }
 
     /**
      * Override to prevent vanilla label writing
      */
     @Override
-    protected void renderLabels(GuiGraphics graphics, int p_97809_, int p_97810_) {
+    protected void extractLabels(GuiGraphicsExtractor graphics, int p_97809_, int p_97810_) {
 
     }
 
@@ -205,17 +205,14 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
      * @param mouseY       The mouse Y
      */
     @Override
-    protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
+    public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
+        matrixStack.pushMatrix();
         RenderUtils.prepareRenderState();
-        matrixStack.translate(leftPos, topPos, 0);
+        matrixStack.translate(leftPos, topPos);
 
-        RenderSystem.setShader(GameRenderer::getPositionTexShader);
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        RenderSystem.setShaderTexture(0, this.textureLocation);
-
-        graphics.blit(this.textureLocation, 0, 0, 0, 0, imageWidth + 1, imageHeight + 1);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, this.textureLocation, 0, 0, 0, 0,
+                imageWidth + 1, imageHeight + 1, 256, 256);
 
         components.forEach((baseComponent -> {
             RenderUtils.prepareRenderState();
@@ -224,7 +221,8 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
             RenderUtils.restoreColor();
         }));
         RenderUtils.restoreRenderState();
-        matrixStack.popPose();
+        matrixStack.popMatrix();
+        super.extractContents(graphics, mouseX, mouseY, partialTicks);
     }
 
     /**
@@ -233,25 +231,26 @@ public abstract class MenuBase<T extends AbstractContainerMenu> extends Abstract
      * @param mouseX The Mouse X Position
      * @param mouseY The mouse Y Position
      */
-    public void drawTopLayer(GuiGraphics graphics, int mouseX, int mouseY) {
-        PoseStack matrixStack = graphics.pose();
-        matrixStack.pushPose();
+    public void drawTopLayer(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        var matrixStack = graphics.pose();
+        matrixStack.pushMatrix();
         components.forEach((baseComponent -> {
             RenderUtils.prepareRenderState();
 
             // Render the base overlay
-            matrixStack.pushPose();
-            matrixStack.translate(leftPos, topPos, 0);
+            matrixStack.pushMatrix();
+            matrixStack.translate(leftPos, topPos);
             baseComponent.renderOverlay(graphics, leftPos, topPos, mouseX, mouseY);
-            matrixStack.popPose();
+            matrixStack.popMatrix();
 
             // Render the tooltip
             if (baseComponent.isMouseOver(mouseX - leftPos, mouseY - topPos))
                 baseComponent.renderToolTip(graphics, mouseX, mouseY);
+
+            RenderUtils.restoreColor();
+            RenderUtils.restoreRenderState();
         }));
-        RenderUtils.restoreColor();
-        RenderUtils.restoreRenderState();
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 
     /*******************************************************************************************************************

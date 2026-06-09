@@ -5,7 +5,8 @@ import com.pauljoda.nucleus.util.ClientUtils;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -109,7 +110,7 @@ public class MenuWidgetLongText extends BaseWidget {
      * @param button Mouse Button
      */
     @Override
-    public boolean mouseClicked(double x, double y, int button) {
+    public void mouseDown(double x, double y, int button) {
         if (GuiHelper.isInBounds(x, y, xPos + width - 15, yPos, xPos + width, yPos + 8)) {
             upSelected = true;
             currentLine -= 1;
@@ -123,7 +124,6 @@ public class MenuWidgetLongText extends BaseWidget {
                 currentLine = getLastLineToRender();
             GuiHelper.playButtonSound();
         }
-        return false;
     }
 
     /**
@@ -134,9 +134,8 @@ public class MenuWidgetLongText extends BaseWidget {
      * @param button Mouse Button
      */
     @Override
-    public boolean mouseReleased(double x, double y, int button) {
+    public void mouseUp(double x, double y, int button) {
         upSelected = downSelected = false;
-        return false;
     }
 
     /**
@@ -157,43 +156,45 @@ public class MenuWidgetLongText extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(xPos, yPos, 0);
+        matrixStack.pushMatrix();
+        matrixStack.translate(xPos, yPos);
         RenderUtils.bindTexture(parent.textureLocation);
 
-        graphics.blit(parent.textureLocation, width - 15, 0, u, v, 15, 8);
-        graphics.blit(parent.textureLocation, width - 15, height - 7, u, v + 8, 15, 8);
-        matrixStack.popPose();
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, width - 15, 0, u, v, 15, 8, 256, 256);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, width - 15, height - 7, u, v + 8, 15, 8, 256, 256);
+        matrixStack.popMatrix();
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
+        matrixStack.pushMatrix();
 
-        matrixStack.translate(xPos, yPos, 0);
+        matrixStack.translate(xPos, yPos);
         RenderUtils.prepareRenderState();
 
         int yPos = -9;
         int actualY = 0;
-        matrixStack.scale(textScale / 100F, textScale / 100F, textScale / 100F);
+        matrixStack.scale(textScale / 100F, textScale / 100F);
         for (int x = currentLine; x < lines.size(); x++) {
             if (actualY + ((textScale * 9) / 100) > height)
                 break;
             RenderUtils.restoreColor();
             String label = lines.get(x);
 
-            graphics.drawString(font, label, 0, yPos + 9, 0xFFFFFF);
+            RenderUtils.text(graphics, font, label, 0, yPos + 9, colorDefault, false);
             yPos += 9;
             actualY += (textScale * 9) / 100;
         }
 
-        matrixStack.popPose();
+        RenderUtils.restoreColor();
+        RenderUtils.restoreRenderState();
+        matrixStack.popMatrix();
     }
 
     /**

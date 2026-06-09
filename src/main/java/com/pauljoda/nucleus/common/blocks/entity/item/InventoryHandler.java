@@ -5,10 +5,11 @@ import com.pauljoda.nucleus.capabilities.item.InventoryHolderCapability;
 import com.pauljoda.nucleus.common.blocks.entity.Syncable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 /**
@@ -104,25 +105,15 @@ public abstract class InventoryHandler extends Syncable {
      * TileEntity                                                                                                      *
      *******************************************************************************************************************/
 
-    /**
-     * Used to save the inventory to an NBT tag
-     *
-     * @param compound The tag to save to
-     */
     @Override
-    public void load(CompoundTag compound) {
-        super.load(compound);
-        inventory.load(compound);
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        inventory.load(input);
     }
 
-    /**
-     * Used to read the inventory from an NBT tag compound
-     *
-     * @param compound The tag to read from
-     */
     @Override
-    public void saveAdditional(CompoundTag compound) {
-        super.saveAdditional(compound);
-        inventory.save(compound);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        inventory.save(output);
     }
 }

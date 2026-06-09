@@ -8,7 +8,7 @@ import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -40,7 +40,7 @@ public class NucleusJEIPlugin implements IModPlugin {
      * @return The unique identifier of the plugin.
      */
     @Override
-    public ResourceLocation getPluginUid() {
-        return new ResourceLocation(Nucleus.MODID, "jei");
+    public Identifier getPluginUid() {
+        return Identifier.fromNamespaceAndPath(Nucleus.MODID, "jei");
     }
 }

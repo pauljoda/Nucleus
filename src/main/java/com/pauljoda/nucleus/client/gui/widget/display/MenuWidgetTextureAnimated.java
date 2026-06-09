@@ -2,7 +2,8 @@ package com.pauljoda.nucleus.client.gui.widget.display;
 
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 
 /**
  * This file was created for Nucleus
@@ -64,31 +65,35 @@ public abstract class MenuWidgetTextureAnimated extends MenuWidgetTexture {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(xPos, yPos, 0);
+        matrixStack.pushMatrix();
+        matrixStack.translate(xPos, yPos);
         RenderUtils.bindTexture(parent.textureLocation);
 
         switch (animationDirection) {
             case RIGHT:
                 int progressRight = Math.min(width, getCurrentProgress(width));
-                graphics.blit(parent.textureLocation, 0, 0, u, v, progressRight, height);
+                RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, 0, 0, u, v,
+                        progressRight, height, 256, 256);
                 break;
             case DOWN:
                 int progressDown = Math.min(height, getCurrentProgress(height));
-                graphics.blit(parent.textureLocation, 0, 0, u, v, width, progressDown);
+                RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, 0, 0, u, v,
+                        width, progressDown, 256, 256);
                 break;
             case LEFT:
                 int progressLeft = Math.min(width, getCurrentProgress(width));
-                graphics.blit(parent.textureLocation, -width + progressLeft, 0, u, v, progressLeft, height);
+                RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation,
+                        -width + progressLeft, 0, u, v, progressLeft, height, 256, 256);
                 break;
             case UP:
                 int progressUp = Math.min(height, getCurrentProgress(height));
-                graphics.blit(parent.textureLocation, 0, height - progressUp, u, v + height - progressUp, width, progressUp);
+                RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, 0,
+                        height - progressUp, u, v + height - progressUp, width, progressUp, 256, 256);
                 break;
         }
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 
     /*******************************************************************************************************************

@@ -154,7 +154,7 @@ public abstract class BaseContainer extends AbstractContainerMenu {
      * @param player      The player
      * @return The stack
      */
-    private void slotClickPhantom(Slot slot, int mouseButton, ClickType modifier, Player player) {
+    private void slotClickPhantom(Slot slot, int mouseButton, ContainerInput modifier, Player player) {
         ItemStack stack = ItemStack.EMPTY;
 
         if (mouseButton == 2) {
@@ -174,7 +174,7 @@ public abstract class BaseContainer extends AbstractContainerMenu {
                     fillPhantomSlot(slot, stackHeld, mouseButton, modifier);
             } else if (stackHeld.isEmpty()) {
                 adjustPhantomSlot(slot, mouseButton, modifier);
-                slot.onTake(player, playerInv.getSelected());
+                slot.onTake(player, playerInv.getSelectedItem());
             } else if (slot.mayPlace(stackHeld)) {
                 if (InventoryUtils.canStacksMerge(stackSlot, stackHeld))
                     adjustPhantomSlot(slot, mouseButton, modifier);
@@ -191,13 +191,13 @@ public abstract class BaseContainer extends AbstractContainerMenu {
      * @param mouseButton The mouse button
      * @param modifier    The modifier
      */
-    private void adjustPhantomSlot(Slot slot, int mouseButton, ClickType modifier) {
+    private void adjustPhantomSlot(Slot slot, int mouseButton, ContainerInput modifier) {
         if (!((IPhantomSlot) slot).canAdjust())
             return;
 
         ItemStack stackSlot = slot.getItem();
         int stackSize = 0;
-        if (modifier == ClickType.QUICK_MOVE)
+        if (modifier == ContainerInput.QUICK_MOVE)
             stackSize = (mouseButton == 0) ? (stackSlot.getCount() + 1) / 2 : stackSlot.getCount() * 2;
         else
             stackSize = (mouseButton == 0) ? stackSlot.getCount() - 1 : stackSlot.getCount() + 1;
@@ -219,7 +219,7 @@ public abstract class BaseContainer extends AbstractContainerMenu {
      * @param mouseButton The mouse button
      * @param modifier    The modifier
      */
-    private void fillPhantomSlot(Slot slot, ItemStack stackHeld, int mouseButton, ClickType modifier) {
+    private void fillPhantomSlot(Slot slot, ItemStack stackHeld, int mouseButton, ContainerInput modifier) {
         if (!((IPhantomSlot) slot).canAdjust())
             return;
 
@@ -247,7 +247,7 @@ public abstract class BaseContainer extends AbstractContainerMenu {
      * @param player      The player
      */
     @Override
-    public void clicked(int slotId, int dragType, ClickType clickTypeIn, Player player) {
+    public void clicked(int slotId, int dragType, ContainerInput clickTypeIn, Player player) {
         Slot slot = (slotId < 0) ? null : slots.get(slotId);
         if (slot != null) {
             if (slot instanceof IPhantomSlot) {

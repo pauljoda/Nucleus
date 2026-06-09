@@ -1,18 +1,18 @@
 package com.pauljoda.nucleus.helper;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import com.pauljoda.nucleus.util.RenderUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
-import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
-import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
 
@@ -66,56 +66,57 @@ public class GuiHelper {
      * @param height keep height of icon
      * @param cut    0 is full icon, 16 is full cut
      */
-    public static void drawIconWithCut(TextureAtlasSprite icon, int x, int y, int width, int height, int cut) {
-        Tesselator tess = Tesselator.getInstance();
-        BufferBuilder renderer = tess.getBuilder();
-        renderer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-        renderer.vertex(x, y + height, 0).uv(icon.getU0(), icon.getV(height)).normal(0, -1, 0).endVertex();
-        renderer.vertex(x + width, y + height, 0).uv(icon.getU(width), icon.getV(height)).normal(0, -1, 0).endVertex();
-        renderer.vertex(x + width, y + cut, 0).uv(icon.getU(width), icon.getV(cut)).normal(0, -1, 0).endVertex();
-        renderer.vertex(x, y + cut, 0).uv(icon.getU0(), icon.getV(cut)).normal(0, -1, 0).endVertex();
-        tess.end();
+    public static void drawIconWithCut(GuiGraphicsExtractor graphics, TextureAtlasSprite icon, int x, int y,
+                                       int width, int height, int cut) {
+        int clippedCut = Math.max(0, Math.min(height, cut));
+        if (clippedCut >= height || width <= 0) {
+            return;
+        }
+
+        graphics.blit(icon.atlasLocation(), x, y + clippedCut, x + width, y + height,
+                icon.getU0(), icon.getU(width), icon.getV(clippedCut), icon.getV(height));
     }
 
     /**
      * Renders a fluid from the given tank
      *
-     * @param tank      The tank
+     * @param fluid     The fluid to render
+     * @param capacity  The capacity used to scale the fluid height
      * @param x         The x pos
      * @param y         The y pos
      * @param maxHeight Max height
      * @param maxWidth  Max width
      */
-    public static void renderFluid(FluidTank tank, int x, int y, int maxHeight, int maxWidth) {
-        FluidStack fluid = tank.getFluid();
+    public static void renderFluid(GuiGraphicsExtractor graphics, FluidStack fluid, int capacity,
+                                   int x, int y, int maxHeight, int maxWidth) {
         if (!fluid.isEmpty()) {
-            GL11.glPushMatrix();
-            int level = (fluid.getAmount() * maxHeight) / tank.getCapacity();
-            TextureAtlasSprite icon = Minecraft.getInstance().getTextureAtlas(RenderUtils.MC_BLOCKS_RESOURCE_LOCATION)
-                    .apply(IClientFluidTypeExtensions.of(fluid.getFluid()).getStillTexture());
-            RenderUtils.bindMinecraftBlockSheet();
-            setGLColorFromInt(IClientFluidTypeExtensions.of(fluid.getFluid()).getTintColor());
+            if (capacity <= 0) {
+                return;
+            }
 
-            double timesW = Math.floor(maxWidth / 16);
-            int cutW = 16;
+            int scaledHeight = Math.max(1, Math.min(maxHeight, fluid.getAmount() * maxHeight / capacity));
+            Identifier fluidId = BuiltInRegistries.FLUID.getKey(fluid.getFluid());
+            Identifier spriteId = Identifier.fromNamespaceAndPath(fluidId.getNamespace(), "block/" + fluidId.getPath() + "_still");
+            TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager().get(new SpriteId(TextureAtlas.LOCATION_BLOCKS, spriteId));
 
-            for (int j = 0; j <= timesW; j++) {
-                if (j == timesW)
-                    cutW = maxWidth % 16;
-                if (level >= 16) {
-                    double times = Math.floor(level / 16);
-                    for (int i = 1; i <= times; i++) {
-                        drawIconWithCut(icon, x + (j * 16), y - (16 * i), cutW, 16, 0);
-                    }
-                    int cut = level % 16;
-                    drawIconWithCut(icon, x + (j * 16), (int) (y - (16 * (times + 1))), cutW, 16, 16 - cut);
-                } else {
-                    int cut = level % 16;
-                    drawIconWithCut(icon, x + (j * 16), y - 16, cutW, 16, 16 - cut);
+            int top = y - scaledHeight;
+            for (int drawY = top; drawY < y; drawY += 16) {
+                int tileHeight = Math.min(16, y - drawY);
+                for (int drawX = x; drawX < x + maxWidth; drawX += 16) {
+                    int tileWidth = Math.min(16, x + maxWidth - drawX);
+                    RenderUtils.blitSprite(graphics, sprite, drawX, drawY, tileWidth, tileHeight);
                 }
             }
-            GL11.glPopMatrix();
         }
+    }
+
+    /**
+     * @deprecated Use {@link #renderFluid(GuiGraphicsExtractor, FluidStack, int, int, int, int, int)} with explicit
+     * fluid state and capacity. `FluidTank` is a deprecated NeoForge compatibility type in 26.1.
+     */
+    @Deprecated(forRemoval = true)
+    public static void renderFluid(GuiGraphicsExtractor graphics, FluidTank tank, int x, int y, int maxHeight, int maxWidth) {
+        renderFluid(graphics, tank.getFluid(), tank.getCapacity(), x, y, maxHeight, maxWidth);
     }
 
     /*******************************************************************************************************************

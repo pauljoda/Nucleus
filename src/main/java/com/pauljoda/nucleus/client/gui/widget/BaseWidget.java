@@ -5,7 +5,7 @@ import com.pauljoda.nucleus.client.gui.widget.listeners.IMouseEventListener;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -14,7 +14,6 @@ import javax.annotation.Nullable;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * This file was created for Nucleus
@@ -63,12 +62,12 @@ public abstract class BaseWidget extends Screen {
     /**
      * Called to render the component
      */
-    public abstract void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY);
+    public abstract void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY);
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
-    public abstract void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY);
+    public abstract void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY);
 
     /**
      * Used to find how wide this is
@@ -106,11 +105,11 @@ public abstract class BaseWidget extends Screen {
      * @param mouseX Mouse X
      * @param mouseY Mouse Y
      */
-    public void renderToolTip(GuiGraphics graphics, int mouseX, int mouseY) {
+    public void renderToolTip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         if (toolTip != null && !toolTip.isEmpty())
-            graphics.renderTooltip(fontRenderer, toolTip, Optional.empty(), mouseX, mouseY);
+            graphics.setComponentTooltipForNextFrame(fontRenderer, toolTip, mouseX, mouseY);
         else if (getDynamicToolTip(mouseX, mouseY) != null)
-            graphics.renderTooltip(fontRenderer, getDynamicToolTip(mouseX, mouseY), Optional.empty(), mouseX, mouseY);
+            graphics.setComponentTooltipForNextFrame(fontRenderer, getDynamicToolTip(mouseX, mouseY), mouseX, mouseY);
 
     }
 

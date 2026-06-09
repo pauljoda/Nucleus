@@ -4,7 +4,7 @@ import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.client.gui.widget.NinePatchRenderer;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
@@ -181,7 +181,7 @@ public class MenuTab extends BaseWidget {
      * @param mouseY Mouse Y
      */
     @Override
-    public void renderToolTip(GuiGraphics graphics, int mouseX, int mouseY) {
+    public void renderToolTip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         if (areChildrenActive()) {
             children.forEach((component -> {
                 if (component.isMouseOver(mouseX - xPos - parent.getGuiLeft(), mouseY - yPos - parent.getGuiTop()))
@@ -195,9 +195,9 @@ public class MenuTab extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
+        matrixStack.pushMatrix();
 
         // Set targets to stun
         double targetWidth = isActive ? expandedWidth : FOLDED_SIZE;
@@ -219,12 +219,10 @@ public class MenuTab extends BaseWidget {
         // Render the stack, if available
         RenderUtils.restoreColor();
         if (stack != null) {
-            //RenderHelper.enableStandardItemLighting();
-            matrixStack.pushPose();
-            matrixStack.translate(0F, yPos, 0F);
-            RenderUtils.restoreRenderState();
-            graphics.renderItem(stack, 4, 2);
-            matrixStack.popPose();
+            matrixStack.pushMatrix();
+            matrixStack.translate(0F, yPos);
+            graphics.item(stack, 4, 2);
+            matrixStack.popMatrix();
         }
 
         // Render the children
@@ -235,14 +233,14 @@ public class MenuTab extends BaseWidget {
             }));
         }
 
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         // Render the children
         if (areChildrenActive()) {
             children.forEach((component -> {

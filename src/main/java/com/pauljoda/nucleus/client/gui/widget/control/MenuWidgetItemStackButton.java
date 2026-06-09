@@ -1,7 +1,7 @@
 package com.pauljoda.nucleus.client.gui.widget.control;
 
 import com.pauljoda.nucleus.client.gui.MenuBase;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -32,15 +32,15 @@ public abstract class MenuWidgetItemStackButton extends MenuWidgetButton {
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         super.renderOverlay(graphics, guiLeft, guiTop, mouseX, mouseY);
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(xPos, yPos, 1);
+        matrixStack.pushMatrix();
+        matrixStack.translate(xPos, yPos);
 
-        graphics.renderItem(displayStack, (width / 2) - 8, (height / 2) - 8);
+        graphics.item(displayStack, (width / 2) - 8, (height / 2) - 8);
 
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 
     /*******************************************************************************************************************

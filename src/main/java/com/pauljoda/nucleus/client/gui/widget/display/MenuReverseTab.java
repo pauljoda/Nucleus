@@ -3,7 +3,7 @@ package com.pauljoda.nucleus.client.gui.widget.display;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.NinePatchRenderer;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
@@ -49,9 +49,9 @@ public class MenuReverseTab extends MenuTab {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
+        matrixStack.pushMatrix();
 
         // Set targets to stun
         double targetWidth = isActive ? expandedWidth : FOLDED_SIZE;
@@ -73,35 +73,33 @@ public class MenuReverseTab extends MenuTab {
         // Render the stack, if available
         RenderUtils.restoreColor();
         if (stack != null) {
-            //RenderHelper.enableStandardItemLighting();
-            matrixStack.pushPose();
-            matrixStack.translate(0F, yPos, 0F);
-            RenderUtils.restoreRenderState();
-            graphics.renderItem(stack, -13, 2);
-            matrixStack.popPose();
+            matrixStack.pushMatrix();
+            matrixStack.translate(0F, yPos);
+            graphics.item(stack, -13, 2);
+            matrixStack.popMatrix();
         }
 
         // Render the children
         if (areChildrenActive()) {
-            matrixStack.translate(-expandedWidth, 0, 0);
+            matrixStack.translate(-expandedWidth, 0);
             children.forEach((component -> {
                 component.render(graphics, -expandedWidth, 0, mouseX, mouseY);
                 RenderUtils.restoreColor();
             }));
         }
 
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
         // Render the children
         if (areChildrenActive()) {
-            matrixStack.translate(-expandedWidth, 0, 0);
+            matrixStack.translate(-expandedWidth, 0);
             children.forEach((component -> {
                 RenderUtils.prepareRenderState();
                 component.renderOverlay(graphics, -expandedWidth, 0, mouseX, mouseY);

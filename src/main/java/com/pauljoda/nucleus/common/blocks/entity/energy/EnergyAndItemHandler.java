@@ -3,7 +3,8 @@ package com.pauljoda.nucleus.common.blocks.entity.energy;
 import com.pauljoda.nucleus.capabilities.energy.EnergyBank;
 import com.pauljoda.nucleus.common.blocks.entity.item.InventoryHandler;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.energy.IEnergyStorage;
@@ -79,16 +80,10 @@ public abstract class EnergyAndItemHandler extends InventoryHandler {
         lastEnergy = energyStorage.getEnergyStored();
     }
 
-    /**
-     * Loads the data from the given CompoundTag.
-     *
-     * @param compound The CompoundTag containing the data to be loaded.
-     */
     @Override
-    public void load(CompoundTag compound) {
-        super.load(compound);
-        // Write the current stored
-        energyStorage.load(compound);
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        energyStorage.load(input);
 
         // Check for bad tags
         if (energyStorage.getMaxEnergyStored() == 0)
@@ -99,16 +94,10 @@ public abstract class EnergyAndItemHandler extends InventoryHandler {
             energyStorage.setMaxExtract(getDefaultEnergyStorageSize());
     }
 
-    /**
-     * Saves additional data of the EnergyHandler object into the specified CompoundTag.
-     *
-     * @param compound The CompoundTag to store the data into.
-     */
     @Override
-    public void saveAdditional(CompoundTag compound) {
-        super.saveAdditional(compound);
-
-        energyStorage.save(compound);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        energyStorage.save(output);
     }
 
     /**
@@ -117,6 +106,15 @@ public abstract class EnergyAndItemHandler extends InventoryHandler {
      * @return The energy capability of the EnergyHandler object.
      */
     public IEnergyStorage getEnergyCapability() {
+        return energyStorage;
+    }
+
+    /**
+     * Retrieves the NeoForge 26.1 energy transfer handler for this block entity.
+     *
+     * @return The energy transfer handler.
+     */
+    public net.neoforged.neoforge.transfer.energy.EnergyHandler getEnergyResourceHandler() {
         return energyStorage;
     }
 

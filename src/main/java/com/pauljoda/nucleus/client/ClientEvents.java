@@ -9,8 +9,6 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
-@Mod.EventBusSubscriber(modid = Nucleus.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
-
 public class ClientEvents {
 
     @SubscribeEvent

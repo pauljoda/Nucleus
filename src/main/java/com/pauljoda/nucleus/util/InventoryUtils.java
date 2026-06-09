@@ -6,6 +6,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 import net.neoforged.neoforge.items.wrapper.SidedInvWrapper;
 
 import java.util.ArrayList;
@@ -56,7 +59,7 @@ public class InventoryUtils {
      */
     public static boolean canStacksMerge(ItemStack stackOne, ItemStack stackTwo) {
         return !(stackOne.isEmpty() || stackTwo.isEmpty()) && stackOne.getItem() == stackTwo.getItem() &&
-                ItemStack.isSameItemSameTags(stackOne, stackTwo);
+                ItemStack.isSameItemSameComponents(stackOne, stackTwo);
     }
 
     /**
@@ -68,7 +71,7 @@ public class InventoryUtils {
      */
     public static boolean tryMergeStacks(ItemStack stackToMerge, ItemStack stackInSlot) {
         if (stackInSlot.isEmpty() || !(stackInSlot.getItem() == stackToMerge.getItem()) ||
-                !ItemStack.isSameItemSameTags(stackToMerge, stackInSlot))
+                !ItemStack.isSameItemSameComponents(stackToMerge, stackInSlot))
             return false;
 
         int newStackSize = stackInSlot.getCount() + stackToMerge.getCount();
@@ -106,6 +109,14 @@ public class InventoryUtils {
         if (source == null || target == null)
             return false;
 
+        if ((checkSidedSource && source instanceof BlockEntity) || (checkSidedTarget && target instanceof BlockEntity)) {
+            ResourceHandler<ItemResource> fromHandler = getItemResourceHandler(source, dir.getOpposite(), checkSidedSource);
+            ResourceHandler<ItemResource> toHandler = getItemResourceHandler(target, dir, checkSidedTarget);
+            if (fromHandler == null || toHandler == null)
+                return false;
+            return moveItemResource(fromHandler, fromSlot, toHandler, intoSlot, maxAmount, doMove);
+        }
+
         // Object to hold source
         IItemHandler fromInventory;
 
@@ -120,16 +131,6 @@ public class InventoryUtils {
             fromInventory = (IItemHandler) source;
         }
 
-        // If required, check for sidedness on tiles
-        if (checkSidedSource) {
-            if (source instanceof BlockEntity tile) {
-                if (CapabilityUtils.getBlockCapability(tile, Capabilities.ItemHandler.BLOCK, dir) != null)
-                    fromInventory = CapabilityUtils.getBlockCapability(tile, Capabilities.ItemHandler.BLOCK, dir);
-                else
-                    return false; // Source does not want to expose access
-            }
-        }
-
         IItemHandler targetInventory;
 
         // If sink is not an item handler, attempt to cast
@@ -141,17 +142,6 @@ public class InventoryUtils {
         } else {
             // Cast item handlers
             targetInventory = (IItemHandler) target;
-        }
-
-        // If required, check for sidedness on tiles
-        if (checkSidedTarget) {
-            if (target instanceof BlockEntity tile) {
-                if (CapabilityUtils.getBlockCapability(tile, Capabilities.ItemHandler.BLOCK, dir.getOpposite()) != null)
-                    targetInventory =
-                            CapabilityUtils.getBlockCapability(tile, Capabilities.ItemHandler.BLOCK, dir.getOpposite());
-                else
-                    return false; // Target does not want to expose access
-            }
         }
 
         // Load slots
@@ -192,5 +182,57 @@ public class InventoryUtils {
             }
         }
         return false; // Failed to move something
+    }
+
+    private static ResourceHandler<ItemResource> getItemResourceHandler(Object source, Direction side, boolean sided) {
+        if (source instanceof BlockEntity tile) {
+            if (tile.getLevel() == null)
+                return null;
+            return tile.getLevel().getCapability(Capabilities.Item.BLOCK, tile.getBlockPos(), sided ? side : null);
+        }
+        return null;
+    }
+
+    private static boolean moveItemResource(ResourceHandler<ItemResource> source, int fromSlot,
+                                            ResourceHandler<ItemResource> target, int intoSlot,
+                                            int maxAmount, boolean doMove) {
+        List<Integer> fromSlots = new ArrayList<>();
+        List<Integer> toSlots = new ArrayList<>();
+
+        if (fromSlot != -1)
+            fromSlots.add(fromSlot);
+        else
+            for (int slot = 0; slot < source.size(); slot++)
+                fromSlots.add(slot);
+
+        if (intoSlot != -1)
+            toSlots.add(intoSlot);
+        else
+            for (int slot = 0; slot < target.size(); slot++)
+                toSlots.add(slot);
+
+        for (int sourceSlot : fromSlots) {
+            ItemResource resource = source.getResource(sourceSlot);
+            if (resource.isEmpty())
+                continue;
+
+            int amount = Math.min(maxAmount, source.getAmountAsInt(sourceSlot));
+            if (amount <= 0)
+                continue;
+
+            for (int targetSlot : toSlots) {
+                try (Transaction transaction = Transaction.openRoot()) {
+                    int extracted = source.extract(sourceSlot, resource, amount, transaction);
+                    int inserted = target.insert(targetSlot, resource, extracted, transaction);
+                    if (inserted > 0) {
+                        if (!doMove)
+                            return true;
+                        transaction.commit();
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

@@ -1,9 +1,16 @@
 package com.pauljoda.nucleus.common.items;
 
 import com.pauljoda.nucleus.capabilities.energy.EnergyBank;
+import com.pauljoda.nucleus.common.components.EnergyStorageComponent;
+import com.pauljoda.nucleus.registration.NucleusDataComponents;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -16,10 +23,11 @@ import org.jetbrains.annotations.NotNull;
  * @author Paul Davis - pauljoda
  * @since 3/1/2017
  */
-public abstract class EnergyContainingItem implements IEnergyStorage {
+public abstract class EnergyContainingItem implements IEnergyStorage, EnergyHandler {
     // Variables
     private final ItemStack heldStack;
     private final EnergyBank localEnergy;
+    private final StackEnergyJournal energyJournal = new StackEnergyJournal();
 
     /**
      * Simplest constructor of EnergyBank
@@ -36,11 +44,29 @@ public abstract class EnergyContainingItem implements IEnergyStorage {
      */
     @SuppressWarnings("DataFlowIssue")
     protected void checkStackTag() {
-        // Give the stack a tag
-        if (!heldStack.hasTag()) {
-            heldStack.setTag(new CompoundTag());
-            localEnergy.save(heldStack.getTag());
+        EnergyStorageComponent component = heldStack.get(NucleusDataComponents.ITEM_ENERGY.get());
+        if (component != null) {
+            component.loadInto(localEnergy);
+            return;
         }
+
+        if (heldStack.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag legacyTag = heldStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            localEnergy.load(legacyTag);
+            saveLocalEnergy();
+            removeLegacyEnergyData(legacyTag);
+            return;
+        }
+
+        saveLocalEnergy();
+    }
+
+    protected void loadLocalEnergy() {
+        checkStackTag();
+    }
+
+    protected void saveLocalEnergy() {
+        heldStack.set(NucleusDataComponents.ITEM_ENERGY.get(), EnergyStorageComponent.from(localEnergy));
     }
 
     /**
@@ -66,10 +92,10 @@ public abstract class EnergyContainingItem implements IEnergyStorage {
      */
     @Override
     public int receiveEnergy(int maxReceive, boolean simulate) {
-        checkStackTag();
-        localEnergy.load(heldStack.getTag());
-        int energyReceived = localEnergy.receiveEnergy(maxReceive, !simulate);
-        localEnergy.save(heldStack.getTag());
+        loadLocalEnergy();
+        int energyReceived = localEnergy.receiveEnergy(maxReceive, simulate);
+        if (!simulate)
+            saveLocalEnergy();
         return energyReceived;
     }
 
@@ -82,10 +108,10 @@ public abstract class EnergyContainingItem implements IEnergyStorage {
      */
     @Override
     public int extractEnergy(int maxExtract, boolean simulate) {
-        checkStackTag();
-        localEnergy.load(heldStack.getTag());
-        int extractedEnergy = localEnergy.extractEnergy(maxExtract, !simulate);
-        localEnergy.save(heldStack.getTag());
+        loadLocalEnergy();
+        int extractedEnergy = localEnergy.extractEnergy(maxExtract, simulate);
+        if (!simulate)
+            saveLocalEnergy();
         return extractedEnergy;
     }
 
@@ -94,8 +120,7 @@ public abstract class EnergyContainingItem implements IEnergyStorage {
      */
     @Override
     public int getEnergyStored() {
-        checkStackTag();
-        localEnergy.load(heldStack.getTag());
+        loadLocalEnergy();
         return localEnergy.getEnergyStored();
     }
 
@@ -104,9 +129,52 @@ public abstract class EnergyContainingItem implements IEnergyStorage {
      */
     @Override
     public int getMaxEnergyStored() {
-        checkStackTag();
-        localEnergy.load(heldStack.getTag());
+        loadLocalEnergy();
         return localEnergy.getMaxEnergyStored();
+    }
+
+    /*******************************************************************************************************************
+     * EnergyHandler                                                                                                   *
+     *******************************************************************************************************************/
+
+    @Override
+    public long getAmountAsLong() {
+        return getEnergyStored();
+    }
+
+    @Override
+    public long getCapacityAsLong() {
+        return getMaxEnergyStored();
+    }
+
+    @Override
+    public int insert(int amount, TransactionContext transaction) {
+        if (amount <= 0 || !canReceive())
+            return 0;
+
+        loadLocalEnergy();
+        int inserted = localEnergy.receiveEnergy(amount, true);
+        if (inserted > 0) {
+            energyJournal.updateSnapshots(transaction);
+            localEnergy.receiveEnergy(inserted, false);
+            saveLocalEnergy();
+        }
+        return inserted;
+    }
+
+    @Override
+    public int extract(int amount, TransactionContext transaction) {
+        if (amount <= 0 || !canExtract())
+            return 0;
+
+        loadLocalEnergy();
+        int extracted = localEnergy.extractEnergy(amount, true);
+        if (extracted > 0) {
+            energyJournal.updateSnapshots(transaction);
+            localEnergy.extractEnergy(extracted, false);
+            saveLocalEnergy();
+        }
+        return extracted;
     }
 
     /**
@@ -125,5 +193,30 @@ public abstract class EnergyContainingItem implements IEnergyStorage {
     @Override
     public boolean canReceive() {
         return true;
+    }
+
+    private class StackEnergyJournal extends SnapshotJournal<EnergyStorageComponent> {
+        @Override
+        protected EnergyStorageComponent createSnapshot() {
+            return EnergyStorageComponent.from(localEnergy);
+        }
+
+        @Override
+        protected void revertToSnapshot(EnergyStorageComponent snapshot) {
+            snapshot.loadInto(localEnergy);
+            saveLocalEnergy();
+        }
+    }
+
+    private void removeLegacyEnergyData(CompoundTag legacyTag) {
+        legacyTag.remove("EnergyStored");
+        legacyTag.remove("Capacity");
+        legacyTag.remove("MaxInsert");
+        legacyTag.remove("MaxExtract");
+        if (legacyTag.isEmpty()) {
+            heldStack.remove(DataComponents.CUSTOM_DATA);
+        } else {
+            CustomData.set(DataComponents.CUSTOM_DATA, heldStack, legacyTag);
+        }
     }
 }

@@ -3,16 +3,19 @@ package com.pauljoda.nucleus.common.blocks.entity.fluid;
 import com.pauljoda.nucleus.common.blocks.entity.item.InventoryHandler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 
 import javax.annotation.Nonnull;
 
@@ -35,6 +38,8 @@ public abstract class FluidAndItemHandler extends InventoryHandler implements IF
 
     // Tanks
     public FluidTank[] tanks;
+    private final ResourceHandler<FluidResource> fluidResourceHandler =
+            new NucleusFluidResourceHandler(() -> tanks, this::getInputTanks, this::getOutputTanks, this::onTankChanged);
 
     /**
      * Default constructor, calls the setupTanks method to setup the tanks
@@ -97,7 +102,7 @@ public abstract class FluidAndItemHandler extends InventoryHandler implements IF
         for (Integer x : getInputTanks()) {
             if (x < tanks.length)
                 if ((tanks[x].getFluid().isEmpty() || tanks[x].getFluid().getFluid() == null) ||
-                        (tanks[x].getFluid().isEmpty() && tanks[x].getFluid().getFluid() == fluid))
+                        (!tanks[x].getFluid().isEmpty() && tanks[x].getFluid().getFluid() == fluid))
                     return true;
         }
         return false;
@@ -111,7 +116,7 @@ public abstract class FluidAndItemHandler extends InventoryHandler implements IF
     protected boolean canDrain(Fluid fluid) {
         for (Integer x : getOutputTanks()) {
             if (x < tanks.length)
-                if (!tanks[x].getFluid().isEmpty() && tanks[x].getFluid().getFluid() != Fluids.EMPTY)
+                if (!tanks[x].getFluid().isEmpty() && tanks[x].getFluid().getFluid() == fluid)
                     return true;
         }
         return false;
@@ -126,50 +131,43 @@ public abstract class FluidAndItemHandler extends InventoryHandler implements IF
         return this;
     }
 
+    /**
+     * Returns the NeoForge 26.1 transfer handler for this block entity's tanks.
+     *
+     * @return The first-class fluid resource handler.
+     */
+    public ResourceHandler<FluidResource> getFluidResourceHandler() {
+        return fluidResourceHandler;
+    }
+
     /*******************************************************************************************************************
      * Tile Methods                                                                                                    *
      *******************************************************************************************************************/
 
-    /**
-     * Used to save the object to an NBT tag
-     *
-     * @param compound The tag to save to
-     */
-    @Nonnull
     @Override
-    public void load(@Nonnull CompoundTag compound) {
-        super.load(compound);
-        int id = 0;
-        compound.putInt(SIZE_NBT_TAG, tanks.length);
-        ListTag tagList = new ListTag();
-        for (FluidTank tank : tanks) {
-            if (tank != null) {
-                CompoundTag tankCompound = new CompoundTag();
-                tankCompound.putByte(TANK_ID_NBT_TAG, (byte) id);
-                id += 1;
-                tank.writeToNBT(tankCompound);
-                tagList.add(tankCompound);
-            }
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        int size = input.getIntOr(SIZE_NBT_TAG, tanks.length);
+        if (size != tanks.length) tanks = new FluidTank[size];
+        for (ValueInput tankInput : input.childrenListOrEmpty(TANKS_NBT_TAG)) {
+            byte position = tankInput.getByteOr(TANK_ID_NBT_TAG, (byte) -1);
+            if (position >= 0 && position < tanks.length && tanks[position] != null)
+                tanks[position].deserialize(tankInput);
         }
-        compound.put(TANKS_NBT_TAG, tagList);
     }
 
-    /**
-     * Used to read from an NBT tag
-     *
-     * @param compound The tag to read from
-     */
     @Override
-    public void saveAdditional(@Nonnull CompoundTag compound) {
-        super.saveAdditional(compound);
-        ListTag tagList = compound.getList(TANKS_NBT_TAG, 10);
-        int size = compound.getInt(SIZE_NBT_TAG);
-        if (size != tanks.length && compound.contains(SIZE_NBT_TAG)) tanks = new FluidTank[size];
-        for (int x = 0; x < tagList.size(); x++) {
-            CompoundTag tankCompound = tagList.getCompound(x);
-            byte position = tankCompound.getByte(TANK_ID_NBT_TAG);
-            if (position < tanks.length)
-                tanks[position].readFromNBT(tankCompound);
+    protected void saveAdditional(@Nonnull ValueOutput output) {
+        super.saveAdditional(output);
+        output.putInt(SIZE_NBT_TAG, tanks.length);
+        ValueOutput.ValueOutputList tankList = output.childrenList(TANKS_NBT_TAG);
+        for (int id = 0; id < tanks.length; id++) {
+            FluidTank tank = tanks[id];
+            if (tank != null) {
+                ValueOutput tankOutput = tankList.addChild();
+                tankOutput.putByte(TANK_ID_NBT_TAG, (byte) id);
+                tank.serialize(tankOutput);
+            }
         }
     }
 
@@ -249,14 +247,11 @@ public abstract class FluidAndItemHandler extends InventoryHandler implements IF
     @Override
     public int fill(FluidStack resource, FluidAction action) {
         if (!resource.isEmpty() && resource.getFluid() != Fluids.EMPTY && canFill(resource.getFluid())) {
-            for (Integer x : getInputTanks()) {
-                if (x < tanks.length) {
-                    if (tanks[x].fill(resource, action) > 0) {
-                        int actual = tanks[x].fill(resource, action);
-                        if (action.execute()) onTankChanged(tanks[x]);
-                        return actual;
-                    }
-                }
+            try (Transaction transaction = Transaction.openRoot()) {
+                int inserted = fluidResourceHandler.insert(FluidResource.of(resource), resource.getAmount(), transaction);
+                if (action.execute())
+                    transaction.commit();
+                return inserted;
             }
         }
         return 0;
@@ -275,18 +270,20 @@ public abstract class FluidAndItemHandler extends InventoryHandler implements IF
     @Nonnull
     @Override
     public FluidStack drain(int maxDrain, FluidAction doDrain) {
-        FluidStack fluidStack = FluidStack.EMPTY.copy();
         for (Integer x : getOutputTanks()) {
             if (x < tanks.length) {
-                fluidStack = tanks[x].drain(maxDrain, doDrain);
-                if (!fluidStack.isEmpty()) {
-                    tanks[x].drain(maxDrain, doDrain);
-                    if (doDrain.execute()) onTankChanged(tanks[x]);
-                    return fluidStack;
+                FluidResource resource = fluidResourceHandler.getResource(x);
+                if (!resource.isEmpty()) {
+                    try (Transaction transaction = Transaction.openRoot()) {
+                        int extracted = fluidResourceHandler.extract(x, resource, maxDrain, transaction);
+                        if (doDrain.execute())
+                            transaction.commit();
+                        return extracted == 0 ? FluidStack.EMPTY : resource.toStack(extracted);
+                    }
                 }
             }
         }
-        return fluidStack;
+        return FluidStack.EMPTY;
     }
 
     /**
@@ -300,6 +297,20 @@ public abstract class FluidAndItemHandler extends InventoryHandler implements IF
     @Nonnull
     @Override
     public FluidStack drain(FluidStack resource, FluidAction doDrain) {
-        return drain(resource.getAmount(), doDrain);
+        if (resource.isEmpty() || resource.getFluid() == Fluids.EMPTY || !canDrain(resource.getFluid()))
+            return FluidStack.EMPTY;
+
+        FluidResource fluidResource = FluidResource.of(resource);
+        for (Integer x : getOutputTanks()) {
+            if (x < tanks.length && fluidResource.matches(tanks[x].getFluid())) {
+                try (Transaction transaction = Transaction.openRoot()) {
+                    int extracted = fluidResourceHandler.extract(x, fluidResource, resource.getAmount(), transaction);
+                    if (doDrain.execute())
+                        transaction.commit();
+                    return extracted == 0 ? FluidStack.EMPTY : resource.copyWithAmount(extracted);
+                }
+            }
+        }
+        return FluidStack.EMPTY;
     }
 }

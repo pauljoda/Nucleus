@@ -4,7 +4,7 @@ import com.pauljoda.nucleus.client.gui.widget.listeners.IMouseEventListener;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.world.item.ItemStack;
 
@@ -161,7 +161,7 @@ public class MenuTabCollection extends BaseWidget {
      * @param mouseY Mouse Y
      */
     @Override
-    public void renderToolTip(GuiGraphics graphics, int mouseX, int mouseY) {
+    public void renderToolTip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         tabs.forEach((menuTab -> {
             if (menuTab.isMouseOver(mouseX - parent.getGuiLeft(), mouseY - parent.getGuiTop()))
                 menuTab.renderToolTip(graphics, mouseX, mouseY);
@@ -172,15 +172,15 @@ public class MenuTabCollection extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
         realignTabsVertically();
         for (MenuTab tab : tabs) {
-            matrixStack.pushPose();
-            matrixStack.translate(tab.getXPos(), tab.getYPos(), 0);
+            matrixStack.pushMatrix();
+            matrixStack.translate(tab.getXPos(), tab.getYPos());
             tab.render(graphics, guiLeft, guiTop, mouseX - tab.getXPos(), mouseY - tab.getYPos());
             RenderUtils.restoreColor();
-            matrixStack.popPose();
+            matrixStack.popMatrix();
         }
     }
 
@@ -188,16 +188,16 @@ public class MenuTabCollection extends BaseWidget {
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
         for (MenuTab tab : tabs) {
-            matrixStack.pushPose();
+            matrixStack.pushMatrix();
             RenderUtils.prepareRenderState();
-            matrixStack.translate(tab.getXPos(), tab.getYPos(), 0);
+            matrixStack.translate(tab.getXPos(), tab.getYPos());
             tab.renderOverlay(graphics, 0, 0, mouseX, mouseY);
             RenderUtils.restoreRenderState();
             RenderUtils.restoreColor();
-            matrixStack.popPose();
+            matrixStack.popMatrix();
         }
     }
 

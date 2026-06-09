@@ -3,7 +3,9 @@ package com.pauljoda.nucleus.connected;
 import com.pauljoda.nucleus.common.UpdatingBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -36,9 +38,9 @@ public abstract class UpdatingConnectedTextureBlock extends UpdatingBlock implem
     }
 
     @Override
-    public BlockState updateShape(BlockState pState, Direction pDirection,
-                                  BlockState pNeighborState, LevelAccessor pLevel,
-                                  BlockPos pPos, BlockPos pNeighborPos) {
+    protected BlockState updateShape(BlockState pState, LevelReader pLevel, ScheduledTickAccess ticks,
+                                     BlockPos pPos, Direction pDirection, BlockPos pNeighborPos,
+                                     BlockState pNeighborState, RandomSource random) {
         return pState.setValue(CONNECTED_UP, canConnect(pLevel, pPos, Direction.UP))
                 .setValue(CONNECTED_DOWN, canConnect(pLevel, pPos, Direction.DOWN))
                 .setValue(CONNECTED_NORTH, canConnect(pLevel, pPos, Direction.NORTH))
@@ -48,8 +50,8 @@ public abstract class UpdatingConnectedTextureBlock extends UpdatingBlock implem
     }
 
     @Override
-    public boolean canConnect(LevelAccessor level, BlockPos pos, Direction dir) {
-        var otherState = level.getBlockState(pos.offset(dir.getNormal()));
-        return level.getBlockState(pos.offset(dir.getNormal())).getBlock() == this;
+    public boolean canConnect(LevelReader level, BlockPos pos, Direction dir) {
+        var otherState = level.getBlockState(pos.relative(dir));
+        return otherState.getBlock() == this;
     }
 }

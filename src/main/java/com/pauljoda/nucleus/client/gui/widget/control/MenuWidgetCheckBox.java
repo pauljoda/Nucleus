@@ -1,12 +1,11 @@
 package com.pauljoda.nucleus.client.gui.widget.control;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.pauljoda.nucleus.util.ClientUtils;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
 import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 
 import java.awt.*;
 
@@ -80,28 +79,27 @@ public abstract class MenuWidgetCheckBox extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(xPos, yPos, 0);
-        RenderSystem.setShader(GameRenderer::getPositionTexShader);
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        graphics.blit(parent.textureLocation, 0, 0, selected ? u + 10 : u, v, 10, 10);
-        matrixStack.popPose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(xPos, yPos);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, 0, 0,
+                selected ? u + 10 : u, v, 10, 10, 256, 256);
+        matrixStack.popMatrix();
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(xPos + 10, yPos, 0);
+        matrixStack.pushMatrix();
+        matrixStack.translate(xPos + 10, yPos);
         RenderUtils.setColor(Color.darkGray);//Minecraft doesn't play nice with GL, so we will just set our own color
-        graphics.drawString(fontRenderer, label, 2, 1, Color.darkGray.getRGB(), false);
+        RenderUtils.text(graphics, fontRenderer, label, 2, 1, Color.darkGray.getRGB(), false);
         RenderUtils.restoreColor();
-        matrixStack.popPose();
+        matrixStack.popMatrix();
     }
 
     /**

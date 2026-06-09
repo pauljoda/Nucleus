@@ -1,19 +1,22 @@
 package com.pauljoda.nucleus.data;
 
 
+import com.pauljoda.nucleus.data.loot.CopyBlockEntityDataFunction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.data.loot.packs.VanillaBlockLoot;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.storage.loot.ContainerComponentManipulators;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.DynamicLoot;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.entries.LootPoolSingletonContainer;
-import net.minecraft.world.level.storage.loot.functions.CopyNameFunction;
-import net.minecraft.world.level.storage.loot.functions.CopyNbtFunction;
+import net.minecraft.world.level.storage.loot.functions.CopyComponentsFunction;
 import net.minecraft.world.level.storage.loot.functions.SetContainerContents;
-import net.minecraft.world.level.storage.loot.providers.nbt.ContextNbtProvider;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 
 /**
@@ -28,6 +31,9 @@ import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
  */
 public abstract class BaseLootTableGenerator extends VanillaBlockLoot {
 
+    public BaseLootTableGenerator(HolderLookup.Provider registries) {
+        super(registries);
+    }
 
     /**
      * This method creates a standard loot table for a given block with a specific block entity type.
@@ -56,16 +62,17 @@ public abstract class BaseLootTableGenerator extends VanillaBlockLoot {
     protected void createStandardTable(Block block, BlockEntityType<?> type, String... tags) {
         LootPoolSingletonContainer.Builder<?> lti = LootItem.lootTableItem(block);
 
-        // Copy the name of the block entity over to the loot item.
-        lti.apply(CopyNameFunction.copyName(CopyNameFunction.NameSource.BLOCK_ENTITY));
+        lti.apply(CopyComponentsFunction.copyComponentsFromBlockEntity(LootContextParams.BLOCK_ENTITY)
+                .include(DataComponents.CUSTOM_NAME)
+                .include(DataComponents.LOCK)
+                .include(DataComponents.CONTAINER_LOOT));
 
-        // Copy over NBT data from the block entity to the loot item.
-        for (String tag : tags) {
-            lti.apply(CopyNbtFunction.copyData(ContextNbtProvider.BLOCK_ENTITY).copy(tag, "BlockEntityTag." + tag, CopyNbtFunction.MergeStrategy.REPLACE));
+        if (tags.length > 0) {
+            lti.apply(CopyBlockEntityDataFunction.copyBlockEntityData(type, tags));
         }
 
         // Add contents to the loot item from the block entity.
-        lti.apply(SetContainerContents.setContents(type).withEntry(DynamicLoot.dynamicEntry(new ResourceLocation("minecraft", "contents"))));
+        lti.apply(SetContainerContents.setContents(ContainerComponentManipulators.CONTAINER).withEntry(DynamicLoot.dynamicEntry(Identifier.fromNamespaceAndPath("minecraft", "contents"))));
 
         // Create a loot pool that rolls once and add the loot item to it.
         LootPool.Builder builder = LootPool.lootPool()

@@ -3,9 +3,13 @@ package com.pauljoda.nucleus.client.gui.widget.control;
 import com.pauljoda.nucleus.helper.GuiHelper;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import com.pauljoda.nucleus.util.RenderUtils;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
@@ -103,7 +107,7 @@ public abstract class MenuWidgetSetNumber extends BaseWidget {
             setValue(value);
             textField.setValue(String.valueOf(value));
         }
-        textField.mouseClicked(x, y, button);
+        textField.mouseClicked(new MouseButtonEvent(x, y, new MouseButtonInfo(button, 0)), false);
         super.mouseDown(x, y, button);
     }
 
@@ -130,14 +134,14 @@ public abstract class MenuWidgetSetNumber extends BaseWidget {
     public void keyTyped(char letter, int keyCode) {
         if (Character.isLetter(letter) && (keyCode != 8 && keyCode != 109)) return;
         if (textField.isFocused())
-            textField.charTyped(letter, keyCode);
+            textField.charTyped(new CharacterEvent(letter));
         if (textField.getValue() == null || (textField.getValue().equals("")) || !isNumeric(textField.getValue())) {
-            textField.setTextColor(0xE62E00);
+            textField.setTextColor(RenderUtils.opaque(0xE62E00));
             return;
         }
         if (keyCode == 13)
             textField.setFocused(false);
-        textField.setTextColor(0xFFFFFF);
+        textField.setTextColor(RenderUtils.opaque(0xFFFFFF));
         if (Integer.parseInt(textField.getValue()) > ceiling)
             textField.setValue(String.valueOf(ceiling));
         else if (Integer.parseInt(textField.getValue()) < floor)
@@ -150,22 +154,24 @@ public abstract class MenuWidgetSetNumber extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        matrixStack.translate(xPos, yPos, 0);
-        graphics.blit(parent.textureLocation, width - 10, -1, upSelected ? u + 12 : u + 1, v, 11, 8);
-        graphics.blit(parent.textureLocation, width - 10, 9, downSelected ? u + 12 : u + 1, v + 7, 11, 8);
-        textField.render(graphics, mouseX, mouseY, Minecraft.getInstance().getDeltaFrameTime());
-        matrixStack.popPose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(xPos, yPos);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, width - 10, -1,
+                upSelected ? u + 12 : u + 1, v, 11, 8, 256, 256);
+        RenderUtils.blit(graphics, RenderPipelines.GUI_TEXTURED, parent.textureLocation, width - 10, 9,
+                downSelected ? u + 12 : u + 1, v + 7, 11, 8, 256, 256);
+        textField.extractRenderState(graphics, mouseX, mouseY, 0.0F);
+        matrixStack.popMatrix();
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
-        // No Op
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+        // Number input has no overlay layer.
     }
 
     /**
@@ -240,4 +246,3 @@ public abstract class MenuWidgetSetNumber extends BaseWidget {
         this.textField = textField;
     }
 }
-

@@ -38,7 +38,7 @@ public class ClientUtils {
      * @return True if pressed
      */
     public static boolean isKeyPressed(int key) {
-        return GLFW.glfwGetKey(Minecraft.getInstance().getWindow().getWindow(), key) == GLFW.GLFW_PRESS;
+        return GLFW.glfwGetKey(Minecraft.getInstance().getWindow().handle(), key) == GLFW.GLFW_PRESS;
     }
 
     /**

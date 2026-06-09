@@ -1,12 +1,8 @@
 package com.pauljoda.nucleus.client.gui.widget.display;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.pauljoda.nucleus.client.gui.MenuBase;
 import com.pauljoda.nucleus.client.gui.widget.BaseWidget;
-import com.pauljoda.nucleus.util.RenderUtils;
-import net.minecraft.client.gui.GuiGraphics;
-import org.lwjgl.opengl.GL11;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.awt.*;
 
@@ -58,32 +54,20 @@ public class MenuWidgetColoredZone extends BaseWidget {
      * Called to render the component
      */
     @Override
-    public void render(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         color = getDynamicColor();
         var matrixStack = graphics.pose();
-        matrixStack.pushPose();
-        GlStateManager._blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        RenderSystem.enableBlend();
-        //RenderSystem.enableAlphaTest();
-        RenderSystem.disableDepthTest();
-        matrixStack.translate(xPos, yPos, 10);
-        RenderUtils.setColor(color);
-        GL11.glBegin(GL11.GL_QUADS);
-        GL11.glVertex3d(0, 0, 0);
-        GL11.glVertex3d(0, height, 0);
-        GL11.glVertex3d(width, height, 0);
-        GL11.glVertex3d(width, 0, 0);
-        GL11.glEnd();
-        RenderSystem.disableBlend();
-        RenderSystem.enableDepthTest();
-        matrixStack.popPose();
+        matrixStack.pushMatrix();
+        matrixStack.translate(xPos, yPos);
+        graphics.fill(0, 0, width, height, color.getRGB());
+        matrixStack.popMatrix();
     }
 
     /**
      * Called after base render, is already translated to guiLeft and guiTop, just move offset
      */
     @Override
-    public void renderOverlay(GuiGraphics graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphicsExtractor graphics, int guiLeft, int guiTop, int mouseX, int mouseY) {
         // Op OP, we want bars and stuff to render on top of this
     }
 

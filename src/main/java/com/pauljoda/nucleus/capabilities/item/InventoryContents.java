@@ -2,10 +2,10 @@ package com.pauljoda.nucleus.capabilities.item;
 
 import com.pauljoda.nucleus.common.Savable;
 import net.minecraft.core.NonNullList;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 public abstract class InventoryContents implements Savable {
     // List of Inventory contents
@@ -27,38 +27,22 @@ public abstract class InventoryContents implements Savable {
      *******************************************************************************************************************/
 
     /**
-     * Loads the data from the given CompoundTag.
+     * Loads the data from the given ValueInput.
      *
-     * @param tag The CompoundTag containing the data to be loaded.
+     * @param input The input containing the data to be loaded.
      */
     @Override
-    public void load(CompoundTag tag) {
-        ContainerHelper.loadAllItems(tag, inventory);
-
-        ListTag nbttaglist = new ListTag();
-
-        for (int i = 0; i < inventory.size(); ++i) {
-            ItemStack itemstack = inventory.get(i);
-            CompoundTag nbttagcompound = new CompoundTag();
-            nbttagcompound.putByte("Slot", (byte) i);
-            itemstack.save(nbttagcompound);
-            nbttaglist.add(nbttagcompound);
-        }
-
-        if (!nbttaglist.isEmpty()) {
-            tag.put("Items", nbttaglist);
-        }
+    public void load(ValueInput input) {
+        ContainerHelper.loadAllItems(input, inventory);
     }
 
     /**
-     * Saves the data of the object into the specified CompoundTag.
+     * Saves the data of the object into the specified ValueOutput.
      *
-     * @param tag The CompoundTag to store the data into.
-     * @return The updated CompoundTag with the saved data.
+     * @param output The output to store the data into.
      */
     @Override
-    public CompoundTag save(CompoundTag tag) {
-        ContainerHelper.saveAllItems(tag, inventory);
-        return tag;
+    public void save(ValueOutput output) {
+        ContainerHelper.saveAllItems(output, inventory);
     }
 }

@@ -1,14 +1,17 @@
 package com.pauljoda.nucleus.capabilities.energy;
 
 import com.pauljoda.nucleus.common.Savable;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.energy.EnergyStorage;
 import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
 /**
  * This class represents a storage bank for energy.
  */
-public class EnergyBank implements IEnergyStorage, Savable {
+public class EnergyBank implements IEnergyStorage, net.neoforged.neoforge.transfer.energy.EnergyHandler, Savable {
     private static final String ENERGY_STORED = "EnergyStored";
     private static final String CAPACITY = "Capacity";
     private static final String MAX_EXTRACT = "MaxExtract";
@@ -18,6 +21,7 @@ public class EnergyBank implements IEnergyStorage, Savable {
     protected int capacity;
     protected int maxReceive;
     protected int maxExtract;
+    private final EnergyJournal energyJournal = new EnergyJournal();
 
     /**
      * Constructs a new EnergyBank object with the given capacity.
@@ -215,36 +219,85 @@ public class EnergyBank implements IEnergyStorage, Savable {
         return this.maxReceive > 0;
     }
 
+    /*******************************************************************************************************************
+     * EnergyHandler                                                                                                   *
+     *******************************************************************************************************************/
+
+    @Override
+    public long getAmountAsLong() {
+        return getEnergyStored();
+    }
+
+    @Override
+    public long getCapacityAsLong() {
+        return getMaxEnergyStored();
+    }
+
+    @Override
+    public int insert(int amount, TransactionContext transaction) {
+        if (amount <= 0 || !canReceive())
+            return 0;
+
+        int inserted = receiveEnergy(amount, true);
+        if (inserted > 0) {
+            energyJournal.updateSnapshots(transaction);
+            receiveEnergy(inserted, false);
+        }
+        return inserted;
+    }
+
+    @Override
+    public int extract(int amount, TransactionContext transaction) {
+        if (amount <= 0 || !canExtract())
+            return 0;
+
+        int extracted = extractEnergy(amount, true);
+        if (extracted > 0) {
+            energyJournal.updateSnapshots(transaction);
+            extractEnergy(extracted, false);
+        }
+        return extracted;
+    }
+
+    private class EnergyJournal extends SnapshotJournal<Integer> {
+        @Override
+        protected Integer createSnapshot() {
+            return energy;
+        }
+
+        @Override
+        protected void revertToSnapshot(Integer snapshot) {
+            energy = snapshot;
+        }
+    }
 
     /*******************************************************************************************************************
      * Savable                                                                                                         *
      *******************************************************************************************************************/
 
     /**
-     * Loads the data from the given CompoundTag.
+     * Loads the data from the given ValueInput.
      *
-     * @param tag The CompoundTag containing the data to be loaded.
+     * @param input The input containing the data to be loaded.
      */
     @Override
-    public void load(CompoundTag tag) {
-        energy = tag.getInt(ENERGY_STORED);
-        capacity = tag.getInt(CAPACITY);
-        maxReceive = tag.getInt(MAX_INSERT);
-        maxExtract = tag.getInt(MAX_EXTRACT);
+    public void load(ValueInput input) {
+        energy = input.getIntOr(ENERGY_STORED, 0);
+        capacity = input.getIntOr(CAPACITY, 0);
+        maxReceive = input.getIntOr(MAX_INSERT, 0);
+        maxExtract = input.getIntOr(MAX_EXTRACT, 0);
     }
 
     /**
-     * Saves the data of the object into the specified CompoundTag.
+     * Saves the data of the object into the specified ValueOutput.
      *
-     * @param tag The CompoundTag to store the data into.
-     * @return The updated CompoundTag with the saved data.
+     * @param output The output to store the data into.
      */
     @Override
-    public CompoundTag save(CompoundTag tag) {
-        tag.putInt(ENERGY_STORED, energy);
-        tag.putInt(CAPACITY, capacity);
-        tag.putInt(MAX_INSERT, maxReceive);
-        tag.putInt(MAX_EXTRACT, maxExtract);
-        return tag;
+    public void save(ValueOutput output) {
+        output.putInt(ENERGY_STORED, energy);
+        output.putInt(CAPACITY, capacity);
+        output.putInt(MAX_INSERT, maxReceive);
+        output.putInt(MAX_EXTRACT, maxExtract);
     }
 }

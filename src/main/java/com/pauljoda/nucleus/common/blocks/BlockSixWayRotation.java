@@ -5,7 +5,7 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 import java.util.Arrays;
 
@@ -22,8 +22,8 @@ import java.util.Arrays;
 public class BlockSixWayRotation extends Block {
 
     // Instance of the property for rotation
-    public static DirectionProperty SIX_WAY =
-            DirectionProperty.create("facing", Arrays.asList(Direction.NORTH, Direction.EAST, Direction.SOUTH,
+    public static EnumProperty<Direction> SIX_WAY =
+            EnumProperty.create("facing", Direction.class, Arrays.asList(Direction.NORTH, Direction.EAST, Direction.SOUTH,
                     Direction.WEST, Direction.DOWN, Direction.UP));
 
 

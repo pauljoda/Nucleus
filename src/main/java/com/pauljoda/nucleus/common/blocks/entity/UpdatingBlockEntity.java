@@ -1,13 +1,20 @@
 package com.pauljoda.nucleus.common.blocks.entity;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -61,7 +68,7 @@ public class UpdatingBlockEntity extends BlockEntity {
 
     public static void tick(Level level, BlockPos pos, BlockState state, BlockEntity blockEntity) {
         if (level.getBlockEntity(pos) instanceof UpdatingBlockEntity updatingEntity) {
-            if (level.isClientSide)
+            if (level.isClientSide())
                 updatingEntity.onClientTick();
             else
                 updatingEntity.onServerTick();
@@ -75,16 +82,37 @@ public class UpdatingBlockEntity extends BlockEntity {
      */
     @Nonnull
     @Override
-    public CompoundTag getUpdateTag() {
-        CompoundTag tag = super.getUpdateTag();
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
         saveAdditional(tag);
         return tag;
+    }
+
+    public void load(CompoundTag tag) {
+        loadAdditional(TagValueInput.create(ProblemReporter.DISCARDING, level == null ? RegistryAccess.EMPTY : level.registryAccess(), tag));
+    }
+
+    public void saveAdditional(CompoundTag tag) {
+        TagValueOutput output = level == null
+                ? TagValueOutput.createWithoutContext(ProblemReporter.DISCARDING)
+                : TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+        saveAdditional(output);
+        tag.merge(output.buildResult());
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+    }
+
+    @Override
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
     }
 
     /**
      * Cause tile to read new info
      */
-    @Override
     public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket packet) {
         load(packet.getTag());
     }
@@ -95,7 +123,6 @@ public class UpdatingBlockEntity extends BlockEntity {
      *
      * @param tag The CompoundTag containing the update data for the BlockEntity.
      */
-    @Override
     public void handleUpdateTag(CompoundTag tag) {
         load(tag);
     }
@@ -108,6 +135,6 @@ public class UpdatingBlockEntity extends BlockEntity {
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
         CompoundTag nbtTag = new CompoundTag();
         saveAdditional(nbtTag);
-        return ClientboundBlockEntityDataPacket.create(this, entity -> this.getUpdateTag());
+        return ClientboundBlockEntityDataPacket.create(this, (entity, registries) -> this.getUpdateTag(registries));
     }
 }
