@@ -1,7 +1,9 @@
 package com.pauljoda.nucleus.testharness;
 
+import com.pauljoda.nucleus.testharness.client.NucleusTestClientSetup;
 import com.pauljoda.nucleus.testharness.registration.NucleusTestBlocks;
 import com.pauljoda.nucleus.testharness.registration.NucleusTestGameTests;
+import com.pauljoda.nucleus.testharness.registration.NucleusTestMenus;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 
@@ -19,8 +21,10 @@ public final class NucleusTestHarness {
     public NucleusTestHarness(IEventBus modEventBus) {
         NucleusTestBlocks.BLOCKS.register(modEventBus);
         NucleusTestBlocks.ITEMS.register(modEventBus);
+        NucleusTestMenus.MENUS.register(modEventBus);
         NucleusTestGameTests.TEST_FUNCTIONS.register(modEventBus);
         modEventBus.addListener(NucleusTestBlocks::buildCreativeTabContents);
         modEventBus.addListener(NucleusTestGameTests::registerTests);
+        modEventBus.addListener(NucleusTestClientSetup::registerMenuScreens);
     }
 }

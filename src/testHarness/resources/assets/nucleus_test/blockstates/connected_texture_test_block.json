@@ -1,0 +1,57 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "nucleus_test:block/connected_texture_test_block_base"
+      }
+    },
+    {
+      "when": {
+        "connected_north": "true"
+      },
+      "apply": {
+        "model": "nucleus_test:block/connected_texture_test_arm_north"
+      }
+    },
+    {
+      "when": {
+        "connected_south": "true"
+      },
+      "apply": {
+        "model": "nucleus_test:block/connected_texture_test_arm_south"
+      }
+    },
+    {
+      "when": {
+        "connected_west": "true"
+      },
+      "apply": {
+        "model": "nucleus_test:block/connected_texture_test_arm_west"
+      }
+    },
+    {
+      "when": {
+        "connected_east": "true"
+      },
+      "apply": {
+        "model": "nucleus_test:block/connected_texture_test_arm_east"
+      }
+    },
+    {
+      "when": {
+        "connected_up": "true"
+      },
+      "apply": {
+        "model": "nucleus_test:block/connected_texture_test_arm_up"
+      }
+    },
+    {
+      "when": {
+        "connected_down": "true"
+      },
+      "apply": {
+        "model": "nucleus_test:block/connected_texture_test_arm_down"
+      }
+    }
+  ]
+}

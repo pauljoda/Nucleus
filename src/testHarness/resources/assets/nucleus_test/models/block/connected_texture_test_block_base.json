@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "nucleus_test:block/connected_texture_base"
+  }
+}

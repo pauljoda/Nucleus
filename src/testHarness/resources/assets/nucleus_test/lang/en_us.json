@@ -1,4 +1,19 @@
 {
   "block.nucleus_test.test_marker_block": "Test Marker Block",
-  "item.nucleus_test.test_marker_block": "Test Marker Block"
+  "item.nucleus_test.test_marker_block": "Test Marker Block",
+  "block.nucleus_test.gui_test_block": "GUI Test Block",
+  "item.nucleus_test.gui_test_block": "GUI Test Block",
+  "block.nucleus_test.connected_texture_test_block": "Connected Texture Test Block",
+  "item.nucleus_test.connected_texture_test_block": "Connected Texture Test Block",
+  "screen.nucleus_test.gui_test": "Nucleus GUI Test",
+  "gui.nucleus_test.instructions": "Nucleus GUI widget harness",
+  "gui.nucleus_test.right_tab_hint": "Right tab: click blue side tab",
+  "gui.nucleus_test.left_tab_hint": "Left tab: click orange side tab",
+  "gui.nucleus_test.status_ready": "Ready: tabs expand/collapse",
+  "gui.nucleus_test.right_tab_title": "Right Expanding Tab",
+  "gui.nucleus_test.right_tab_line_one": "Child text renders",
+  "gui.nucleus_test.right_tab_line_two": "Panel grows smoothly",
+  "gui.nucleus_test.left_tab_title": "Left Reverse Tab",
+  "gui.nucleus_test.left_tab_line_one": "Reverse tab opens",
+  "gui.nucleus_test.left_tab_line_two": "Independent side panel"
 }

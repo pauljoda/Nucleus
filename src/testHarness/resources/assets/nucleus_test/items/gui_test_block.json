@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "nucleus_test:block/gui_test_block"
+  }
+}

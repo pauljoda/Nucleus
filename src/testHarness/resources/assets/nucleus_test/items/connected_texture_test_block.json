@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "nucleus_test:block/connected_texture_test_block_base"
+  }
+}

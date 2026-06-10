@@ -1,6 +1,8 @@
 package com.pauljoda.nucleus.testharness.registration;
 
 import com.pauljoda.nucleus.testharness.NucleusTestHarness;
+import com.pauljoda.nucleus.testharness.common.NucleusConnectedTextureTestBlock;
+import com.pauljoda.nucleus.testharness.common.NucleusGuiTestBlock;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -23,11 +25,27 @@ public final class NucleusTestBlocks {
             properties -> properties.strength(1.5F, 6.0F).sound(SoundType.METAL)
     );
 
+    public static final DeferredBlock<NucleusGuiTestBlock> GUI_TEST_BLOCK = BLOCKS.registerBlock(
+            "gui_test_block",
+            NucleusGuiTestBlock::new,
+            properties -> properties.strength(1.5F, 6.0F).sound(SoundType.WOOD)
+    );
+
+    public static final DeferredBlock<NucleusConnectedTextureTestBlock> CONNECTED_TEXTURE_TEST_BLOCK = BLOCKS.registerBlock(
+            "connected_texture_test_block",
+            NucleusConnectedTextureTestBlock::new,
+            properties -> properties.strength(1.5F, 6.0F).sound(SoundType.GLASS)
+    );
+
     public static final DeferredItem<BlockItem> TEST_MARKER_BLOCK_ITEM = ITEMS.registerSimpleBlockItem(TEST_MARKER_BLOCK);
+    public static final DeferredItem<BlockItem> GUI_TEST_BLOCK_ITEM = ITEMS.registerSimpleBlockItem(GUI_TEST_BLOCK);
+    public static final DeferredItem<BlockItem> CONNECTED_TEXTURE_TEST_BLOCK_ITEM = ITEMS.registerSimpleBlockItem(CONNECTED_TEXTURE_TEST_BLOCK);
 
     public static void buildCreativeTabContents(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS) {
             event.accept(TEST_MARKER_BLOCK_ITEM.get(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+            event.accept(GUI_TEST_BLOCK_ITEM.get(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+            event.accept(CONNECTED_TEXTURE_TEST_BLOCK_ITEM.get(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
         }
     }
 
