@@ -20,6 +20,7 @@ public final class NucleusTestHarness {
         NucleusTestBlocks.BLOCKS.register(modEventBus);
         NucleusTestBlocks.ITEMS.register(modEventBus);
         NucleusTestGameTests.TEST_FUNCTIONS.register(modEventBus);
+        modEventBus.addListener(NucleusTestBlocks::buildCreativeTabContents);
         modEventBus.addListener(NucleusTestGameTests::registerTests);
     }
 }
